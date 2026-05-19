@@ -1396,7 +1396,6 @@ skill/personal-newsroom/
 system:
   timezone: Asia/Shanghai
   archive_dir: /opt/data/home/NewsBriefings
-  system_dir: /opt/data/home/NewsBriefingsSystem
   default_language: zh-CN
 
 schedule:
