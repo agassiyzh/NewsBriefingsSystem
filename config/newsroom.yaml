@@ -1,0 +1,42 @@
+system:
+  timezone: Asia/Shanghai
+  archive_dir: /opt/data/home/NewsBriefings
+  system_dir: /opt/data/home/NewsBriefingsSystem
+  default_language: zh-CN
+
+schedule:
+  morning: "08:00"
+  noon: "13:00"
+  evening: "20:00"
+  monthly_analysis: "1st day 09:30"
+
+collection:
+  max_total: 35
+  default_max_items_per_source: 5
+  existing_archive_summary_chars: 800
+
+publication:
+  telegram_enabled: true
+  markdown_enabled: true
+  hugo_export_enabled: true
+  phase1_runner_publish: false
+
+feedback:
+  provider: cloudflare_worker_d1
+  collect_ip_plaintext: false
+  collect_telegram_user_id: false
+  default_channel: unknown
+
+memory:
+  provider: honcho
+  editor_can_write: true
+  reporter_can_write: false
+  analyst_can_write: false
+
+paths:
+  candidates_dir: data/candidates
+  contexts_dir: data/contexts
+  runs_dir: data/runs
+  logs_dir: logs
+  telegram_previews_dir: data/telegram
+  hugo_content_dir: site/content/briefings

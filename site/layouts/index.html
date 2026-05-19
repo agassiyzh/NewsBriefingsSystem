@@ -1,0 +1,34 @@
+{{ define "main" }}
+  <header class="hero">
+    <p>Personal Newsroom</p>
+    <h1>{{ .Site.Title }}</h1>
+    <p>{{ .Site.Params.description }}</p>
+    <p>当前公开页面只展示安全示例与人工筛选后的 Hugo 导出内容，不包含私有原始 feed 数据。</p>
+  </header>
+
+  <main>
+    {{ $pages := where .Site.RegularPages "Section" "briefings" }}
+    {{ if gt (len $pages) 0 }}
+      <ul class="briefing-list">
+        {{ range $pages.ByDate.Reverse }}
+          <li class="briefing-card">
+            <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
+            <p class="meta">{{ .Params.briefing_day }} · 共 {{ .Params.item_count }} 条候选 · 时区 {{ .Params.timezone }}</p>
+            {{ with .Params.tags }}
+              <p class="meta">标签：{{ delimit . ", " }}</p>
+            {{ end }}
+          </li>
+        {{ end }}
+      </ul>
+    {{ else }}
+      <article>
+        <h2>暂无公开简报</h2>
+        <p>运行 <code>python scripts/ensure_sample_briefing.py</code> 或正式导出后，页面会自动列出简报。</p>
+      </article>
+    {{ end }}
+  </main>
+
+  <footer>
+    <p>内容源仍以本地 Markdown 日归档为准，GitHub Pages 仅做静态公开归档展示。</p>
+  </footer>
+{{ end }}

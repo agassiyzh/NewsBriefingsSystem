@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} · {{ .Site.Title }}{{ end }}</title>
+    <meta name="description" content="{{ with .Description }}{{ . }}{{ else }}{{ .Site.Params.description }}{{ end }}">
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0b1020;
+        --surface: #151b2f;
+        --text: #eef2ff;
+        --muted: #a9b3d1;
+        --accent: #7dd3fc;
+        --border: rgba(169, 179, 209, 0.22);
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f7fafc;
+          --surface: #ffffff;
+          --text: #0f172a;
+          --muted: #475569;
+          --accent: #0369a1;
+          --border: rgba(15, 23, 42, 0.12);
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, var(--bg), color-mix(in srgb, var(--bg), #000 8%));
+        color: var(--text);
+      }
+      a { color: var(--accent); }
+      .container {
+        width: min(880px, calc(100vw - 2rem));
+        margin: 0 auto;
+        padding: 2rem 0 4rem;
+      }
+      header {
+        margin-bottom: 2rem;
+      }
+      .hero, article {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 1.5rem;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+      }
+      .hero p, .meta, .slot-meta {
+        color: var(--muted);
+      }
+      .briefing-list {
+        list-style: none;
+        padding: 0;
+        margin: 1.5rem 0 0;
+        display: grid;
+        gap: 1rem;
+      }
+      .briefing-card {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 1rem 1.1rem;
+        background: color-mix(in srgb, var(--surface), transparent 8%);
+      }
+      .briefing-card h2 {
+        margin: 0 0 0.4rem;
+        font-size: 1.1rem;
+      }
+      article h1 { margin-top: 0; }
+      article h2 {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+      }
+      article h3 {
+        margin-bottom: 0.5rem;
+      }
+      article ul {
+        padding-left: 1.2rem;
+      }
+      .slot-summary {
+        display: grid;
+        gap: 0.75rem;
+        margin: 1.5rem 0;
+      }
+      .slot-card {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0.9rem 1rem;
+      }
+      footer {
+        margin-top: 2rem;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+      code {
+        background: color-mix(in srgb, var(--surface), #000 12%);
+        padding: 0.1rem 0.3rem;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      {{ block "main" . }}{{ end }}
+    </div>
+  </body>
+</html>

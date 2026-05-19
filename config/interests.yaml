@@ -1,0 +1,50 @@
+interests:
+  - name: AI Agent
+    keywords:
+      - AI agent
+      - agent
+      - copilot
+      - autonomous agent
+      - multi-agent
+
+  - name: 开源 AI
+    keywords:
+      - open source ai
+      - 开源
+      - open-source
+      - model weights
+      - llm
+
+  - name: 机器人与银发经济
+    keywords:
+      - robot
+      - robotics
+      - elder care
+      - silver economy
+      - 陪伴机器人
+      - 银发经济
+
+  - name: 海外 POS / SaaS
+    keywords:
+      - pos
+      - retail
+      - restaurant tech
+      - payment
+      - saas
+
+  - name: 创客教育 / 儿童学习
+    keywords:
+      - maker education
+      - stem
+      - 教育
+      - 儿童学习
+      - 创客
+
+  - name: 家庭间隔年 / 自驾 / 内容灵感
+    keywords:
+      - family gap year
+      - road trip
+      - 自驾
+      - 家庭间隔年
+      - xiaohongshu
+      - 内容创作

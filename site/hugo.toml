@@ -1,0 +1,11 @@
+baseURL = "https://example.com/"
+languageCode = "zh-CN"
+title = "Personal Newsroom"
+defaultContentLanguage = "zh-cn"
+enableRobotsTXT = true
+
+[pagination]
+  pagerSize = 10
+
+[params]
+  description = "面向个人研究与项目灵感的 AI 新闻简报档案。"

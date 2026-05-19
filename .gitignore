@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.env
+.DS_Store
+
+logs/
+data/
+
+site/public/
+site/resources/
+site/.hugo_build.lock
+
+*.tmp
+*.swp

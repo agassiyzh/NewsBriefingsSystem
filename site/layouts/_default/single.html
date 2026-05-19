@@ -1,0 +1,22 @@
+{{ define "main" }}
+  <article>
+    <p><a href="{{ "/" | relURL }}">← 返回首页</a></p>
+    <h1>{{ .Title }}</h1>
+    <p class="meta">{{ .Params.briefing_day }} · 共 {{ .Params.item_count }} 条候选 · 时区 {{ .Params.timezone }}</p>
+
+    {{ with .Params.slots }}
+      <section class="slot-summary">
+        {{ range . }}
+          <div class="slot-card">
+            <strong>{{ .label }}</strong>
+            <div class="slot-meta">briefing_id={{ .briefing_id }} · item_count={{ .item_count }}</div>
+          </div>
+        {{ end }}
+      </section>
+    {{ end }}
+
+    <section>
+      {{ .Content }}
+    </section>
+  </article>
+{{ end }}

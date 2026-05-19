@@ -1,0 +1,65 @@
+sources:
+  - name: HN Front Page
+    type: rss
+    url: https://hnrss.org/frontpage
+    max_items: 5
+
+  - name: GitHub Trending Daily
+    type: rss
+    url: https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml
+    max_items: 5
+
+  - name: MIT Technology Review AI
+    type: rss
+    url: https://www.technologyreview.com/topic/artificial-intelligence/feed/
+    max_items: 5
+
+  - name: TechCrunch AI
+    type: rss
+    url: https://techcrunch.com/category/artificial-intelligence/feed/
+    max_items: 5
+
+  - name: The Verge AI
+    type: rss
+    url: https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
+    max_items: 5
+
+  - name: 36Kr
+    type: rss
+    url: https://36kr.com/feed
+    max_items: 5
+
+  - name: 少数派
+    type: rss
+    url: https://sspai.com/feed
+    max_items: 5
+
+  - name: Google News / AI Agent
+    type: google_news
+    query: AI agent
+    max_items: 2
+
+  - name: Google News / Open Source AI
+    type: google_news
+    query: open source AI
+    max_items: 2
+
+  - name: Google News / Elder Care Robot
+    type: google_news
+    query: elder care robot
+    max_items: 2
+
+  - name: Google News / Restaurant POS SaaS
+    type: google_news
+    query: restaurant POS SaaS
+    max_items: 2
+
+  - name: Google News / 创客教育 人工智能
+    type: google_news
+    query: 创客教育 人工智能
+    max_items: 2
+
+  - name: Google News / 家庭间隔年 自驾 亲子 教育
+    type: google_news
+    query: 家庭间隔年 自驾 亲子 教育
+    max_items: 2

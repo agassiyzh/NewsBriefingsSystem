@@ -1,0 +1,32 @@
+{{ define "main" }}
+  <header class="hero">
+    {{ if eq .Kind "section" }}
+      <p>Briefings</p>
+      <h1>{{ .Title }}</h1>
+      <p>按日期浏览公开简报归档。</p>
+    {{ else }}
+      <p>Archive</p>
+      <h1>{{ .Title }}</h1>
+      {{ with .Content }}<div>{{ . }}</div>{{ end }}
+    {{ end }}
+  </header>
+
+  {{ $pages := .Pages.ByDate.Reverse }}
+  <main>
+    {{ if gt (len $pages) 0 }}
+      <ul class="briefing-list">
+        {{ range $pages }}
+          <li class="briefing-card">
+            <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
+            <p class="meta">{{ .Params.briefing_day }} · 共 {{ .Params.item_count }} 条候选 · 时区 {{ .Params.timezone }}</p>
+          </li>
+        {{ end }}
+      </ul>
+    {{ else }}
+      <article>
+        <h2>暂无内容</h2>
+        <p>当前列表页还没有可展示的文章。</p>
+      </article>
+    {{ end }}
+  </main>
+{{ end }}
