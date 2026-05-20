@@ -1,14 +1,42 @@
-<section class="feedback-widget" aria-labelledby="feedback-widget-title"{{ if not .Site.Params.feedback.widgetEnabled }} hidden{{ end }}>
-  <div class="feedback-copy">
-    <h2 id="feedback-widget-title">这期简报有帮助吗？</h2>
-    <p>默认仅支持本地 mock / dry-run。记录失败不会影响阅读。</p>
-  </div>
-  <div class="feedback-actions" role="group" aria-label="简报反馈">
-    <button type="button" class="feedback-button" data-feedback-action="like">👍 喜欢</button>
-    <button type="button" class="feedback-button" data-feedback-action="dislike">👎 不喜欢</button>
-  </div>
-  <p class="feedback-status" data-feedback-status aria-live="polite">反馈默认关闭；启用本地 mock 后会在这里显示结果。</p>
-  <noscript>
-    <p class="feedback-note">未启用 JavaScript 时不会自动记录反馈，阅读内容不受影响。</p>
-  </noscript>
-</section>
+{{- $items := .Params.feedback_items | default (slice) -}}
+{{- if $items -}}
+  <section class="item-feedback-list" aria-labelledby="item-feedback-list-title"{{ if not .Site.Params.feedback.widgetEnabled }} hidden{{ end }}>
+    <div class="feedback-copy">
+      <h2 id="item-feedback-list-title">逐条新闻反馈</h2>
+      <p>喜欢/不喜欢会记录到具体新闻条目，用于后续分析主题、来源和摘要质量；记录失败不会影响阅读。</p>
+    </div>
+    {{- range $index, $item := $items }}
+      {{- if and $item.briefing_id $item.item_id }}
+        <section
+          class="item-feedback-widget"
+          aria-label="新闻条目反馈 {{ $item.item_id }}"
+          data-feedback-item
+          data-feedback-briefing-id="{{ $item.briefing_id }}"
+          data-feedback-item-id="{{ $item.item_id }}"
+          data-feedback-source="{{ $item.source }}"
+          data-feedback-tags="{{ delimit ($item.tags | default (slice)) "," }}"
+        >
+          <div class="item-feedback-meta">
+            <span class="item-feedback-index">条目 {{ add $index 1 }}</span>
+            <code>{{ $item.item_id }}</code>
+            {{- with $item.source }}<span>{{ . }}</span>{{ end }}
+          </div>
+          <div class="feedback-actions" role="group" aria-label="评价新闻条目 {{ $item.item_id }}">
+            <button type="button" class="feedback-button" data-feedback-action="like">👍 喜欢这条</button>
+            <button type="button" class="feedback-button" data-feedback-action="dislike">👎 不喜欢这条</button>
+          </div>
+          <p class="feedback-status" data-feedback-status aria-live="polite">尚未评价这条新闻。</p>
+          <noscript>
+            <p class="feedback-note">
+              未启用 JavaScript，可打开
+              <a href="{{ $.Site.Params.feedback.workerBaseUrl }}/f?action=like&amp;briefing_id={{ $item.briefing_id }}&amp;item_id={{ $item.item_id }}&amp;channel=site">喜欢</a>
+              或
+              <a href="{{ $.Site.Params.feedback.workerBaseUrl }}/f?action=dislike&amp;briefing_id={{ $item.briefing_id }}&amp;item_id={{ $item.item_id }}&amp;channel=site">不喜欢</a>
+              反馈链接。
+            </p>
+          </noscript>
+        </section>
+      {{- end }}
+    {{- end }}
+  </section>
+{{- end }}

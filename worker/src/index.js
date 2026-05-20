@@ -287,6 +287,9 @@ function validateEventPayload(payload) {
     normalized.anonymous_id = anonymousId;
   }
 
+  if ((eventType === 'like' || eventType === 'dislike') && !itemId) {
+    throw new Error('missing_item_id');
+  }
   if (eventType === 'click') {
     if (!itemId) {
       throw new Error('missing_item_id');
@@ -503,7 +506,7 @@ async function handleFeedbackLink(request, env) {
       item_id: url.searchParams.get('item_id'),
       anonymous_id: url.searchParams.get('anon'),
       metadata: {
-        scope: url.searchParams.get('item_id') ? 'item' : 'briefing',
+        scope: 'item',
       },
     });
     await insertEvent(env, normalized);

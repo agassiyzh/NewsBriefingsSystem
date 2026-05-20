@@ -7,16 +7,17 @@ const {
   bucketDwellDuration,
 } = require('../../site/static/feedback.js');
 
-test('buildEventPayload creates a like payload with only whitelisted metadata', () => {
+test('buildEventPayload creates an item-level like payload with only whitelisted metadata', () => {
   const payload = buildEventPayload({
     eventType: 'like',
     channel: 'site',
     briefingId: '2026-05-19-08',
+    itemId: '2026-05-19-08-001',
     anonymousId: 'anon_test_12345678',
     metadata: {
       source: 'Working Feed',
       tag: 'AI Agent',
-      scope: 'briefing',
+      scope: 'item',
       forbidden: 'drop-me',
     },
   });
@@ -25,13 +26,29 @@ test('buildEventPayload creates a like payload with only whitelisted metadata', 
     event_type: 'like',
     channel: 'site',
     briefing_id: '2026-05-19-08',
+    item_id: '2026-05-19-08-001',
     anonymous_id: 'anon_test_12345678',
     metadata: {
       source: 'Working Feed',
       tag: 'AI Agent',
-      scope: 'briefing',
+      scope: 'item',
     },
   });
+});
+
+test('buildEventPayload requires like and dislike events to target a news item', () => {
+  for (const eventType of ['like', 'dislike']) {
+    assert.throws(
+      () =>
+        buildEventPayload({
+          eventType,
+          channel: 'site',
+          briefingId: '2026-05-19-08',
+          anonymousId: 'anon_test_12345678',
+        }),
+      /item_id/i,
+    );
+  }
 });
 
 test('buildEventPayload requires click events to include a safe target URL', () => {

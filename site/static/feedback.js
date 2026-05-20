@@ -186,6 +186,12 @@
       payload.anonymous_id = String(anonymousId);
     }
 
+    if (eventType === 'like' || eventType === 'dislike') {
+      if (!itemId) {
+        throw new Error('like and dislike events require item_id');
+      }
+    }
+
     if (eventType === 'click') {
       payload.target_url = ensureTargetUrl(options.targetUrl);
       if (!payload.item_id) {
@@ -292,8 +298,8 @@
     return created;
   }
 
-  function setStatus(documentRef, message, isError) {
-    const node = documentRef.querySelector('[data-feedback-status]');
+  function setStatus(statusRoot, message, isError) {
+    const node = statusRoot.querySelector('[data-feedback-status]');
     if (!node) {
       return;
     }
@@ -329,29 +335,51 @@
     return false;
   }
 
+  function metadataForItem(container) {
+    const metadata = {
+      scope: 'item',
+      client_version: CLIENT_VERSION,
+    };
+    if (container.dataset.feedbackSource) {
+      metadata.source = container.dataset.feedbackSource;
+    }
+    if (container.dataset.feedbackTags) {
+      const tags = container.dataset.feedbackTags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+        .slice(0, 5);
+      if (tags.length) {
+        metadata.tags = tags;
+      }
+    }
+    return metadata;
+  }
+
   function attachFeedbackButtons(documentRef, config, anonymousId) {
-    const buttons = documentRef.querySelectorAll('[data-feedback-action]');
-    if (!buttons.length) {
+    const containers = documentRef.querySelectorAll('[data-feedback-item]');
+    if (!containers.length) {
       return;
     }
-    buttons.forEach((button) => {
-      button.addEventListener('click', async function () {
-        try {
-          const payload = buildEventPayload({
-            eventType: button.dataset.feedbackAction,
-            channel: config.channel || 'site',
-            briefingId: config.primaryBriefingId,
-            anonymousId,
-            metadata: {
-              scope: 'briefing',
-              client_version: CLIENT_VERSION,
-            },
-          });
-          const result = await postEvent(config, payload);
-          setStatus(documentRef, result.duplicate ? '反馈已记录（重复提交已忽略）。' : '已记录，谢谢反馈。', false);
-        } catch (_error) {
-          setStatus(documentRef, '暂时无法记录，但不影响阅读。', true);
-        }
+    containers.forEach((container) => {
+      const buttons = container.querySelectorAll('[data-feedback-action]');
+      buttons.forEach((button) => {
+        button.addEventListener('click', async function () {
+          try {
+            const payload = buildEventPayload({
+              eventType: button.dataset.feedbackAction,
+              channel: config.channel || 'site',
+              briefingId: container.dataset.feedbackBriefingId,
+              itemId: container.dataset.feedbackItemId,
+              anonymousId,
+              metadata: metadataForItem(container),
+            });
+            const result = await postEvent(config, payload);
+            setStatus(container, result.duplicate ? '这条反馈已记录（重复提交已忽略）。' : '已记录这条新闻的反馈，谢谢。', false);
+          } catch (_error) {
+            setStatus(container, '暂时无法记录这条反馈，但不影响阅读。', true);
+          }
+        });
       });
     });
   }

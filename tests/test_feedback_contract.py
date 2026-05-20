@@ -147,7 +147,14 @@ def test_hugo_build_with_feedback_enabled_renders_widget_and_tracking_config(tmp
     html_path = _build_hugo(site_dir, tmp_path / "public-enabled")
     html = html_path.read_text(encoding="utf-8")
 
-    assert '<section class="feedback-widget"' in html
+    assert 'class="item-feedback-widget"' in html
+    assert 'data-feedback-item-id="2026-05-19-08-001"' in html
+    assert 'data-feedback-briefing-id="2026-05-19-08"' in html
+    assert 'data-feedback-source="Working Feed"' in html
+    assert 'data-feedback-tags="AI Agent,Tooling"' in html
+    assert 'data-feedback-action="like"' in html
+    assert 'data-feedback-action="dislike"' in html
+    assert '<section class="feedback-widget"' not in html
     assert "feedback.js" in html
     assert "newsroom-feedback-config" in html
     assert "newsroom-feedback-items" in html

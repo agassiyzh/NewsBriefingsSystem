@@ -87,6 +87,26 @@ test('POST /api/events rejects unknown top-level fields', async () => {
   assert.equal(env.FEEDBACK_STORE.size(), 0);
 });
 
+test('POST /api/events rejects like and dislike events without an item_id', async () => {
+  const env = createEnv();
+  for (const eventType of ['like', 'dislike']) {
+    const response = await handleRequest(
+      createEventRequest({
+        event_type: eventType,
+        item_id: undefined,
+        idempotency_key: `missing-item-${eventType}`,
+      }),
+      env,
+    );
+    const payload = await readJson(response);
+
+    assert.equal(response.status, 400);
+    assert.equal(payload.ok, false);
+    assert.equal(payload.error, 'missing_item_id');
+  }
+  assert.equal(env.FEEDBACK_STORE.size(), 0);
+});
+
 test('POST /api/events rejects disallowed origins before writing', async () => {
   const env = createEnv();
   const response = await handleRequest(
@@ -145,6 +165,18 @@ test('GET /f records feedback and returns thank-you HTML', async () => {
   assert.equal(response.status, 200);
   assert.match(await response.text(), /已记录，谢谢/);
   assert.equal(env.FEEDBACK_STORE.size(), 1);
+});
+
+test('GET /f rejects like or dislike feedback links without item_id', async () => {
+  const env = createEnv();
+  const response = await handleRequest(
+    new Request('http://worker.local/f?action=like&briefing_id=2026-05-19-08&channel=site&anon=anon_test_12345678'),
+    env,
+  );
+
+  assert.equal(response.status, 400);
+  assert.match(await response.text(), /invalid feedback request/i);
+  assert.equal(env.FEEDBACK_STORE.size(), 0);
 });
 
 test('GET /f refuses public-host fallback writes unless explicitly enabled', async () => {

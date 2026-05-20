@@ -100,16 +100,35 @@
         padding: 0.1rem 0.3rem;
         border-radius: 6px;
       }
-      .feedback-widget {
+      .item-feedback-list {
         margin-top: 2rem;
         padding: 1rem 1.1rem;
         border: 1px solid var(--border);
         border-radius: 14px;
         background: color-mix(in srgb, var(--surface), transparent 12%);
       }
-      .feedback-widget h2 {
+      .item-feedback-list h2 {
         margin: 0;
         font-size: 1.1rem;
+      }
+      .item-feedback-widget {
+        margin-top: 1rem;
+        padding: 0.9rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--surface), transparent 6%);
+      }
+      .item-feedback-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+      .item-feedback-index {
+        color: var(--text);
+        font-weight: 600;
       }
       .feedback-copy p,
       .feedback-note,
