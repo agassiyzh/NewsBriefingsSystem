@@ -458,6 +458,10 @@ function unsafeRedirectHtml() {
   return '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Unsafe redirect blocked</title><body><p>unsafe redirect blocked</p></body></html>';
 }
 
+function invalidRedirectRequestHtml() {
+  return '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Invalid redirect request</title><body><p>invalid redirect request</p></body></html>';
+}
+
 async function handleRedirect(request, env) {
   const url = new URL(request.url);
   const target = url.searchParams.get('u');
@@ -468,8 +472,9 @@ async function handleRedirect(request, env) {
     return htmlResponse(unsafeRedirectHtml(), 400);
   }
 
+  let normalized;
   try {
-    const normalized = validateEventPayload({
+    normalized = validateEventPayload({
       event_type: 'click',
       channel: url.searchParams.get('channel') || 'site',
       briefing_id: url.searchParams.get('briefing_id'),
@@ -477,6 +482,11 @@ async function handleRedirect(request, env) {
       target_url: safeTarget,
       idempotency_key: url.searchParams.get('k') || undefined,
     });
+  } catch (_error) {
+    return htmlResponse(invalidRedirectRequestHtml(), 400);
+  }
+
+  try {
     await insertEvent(env, normalized);
   } catch (_error) {
     // best effort only; never block safe reading redirects

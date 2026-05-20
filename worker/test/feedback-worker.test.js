@@ -132,6 +132,42 @@ test('POST /api/events rejects disallowed origins before writing', async () => {
   assert.equal(env.FEEDBACK_STORE.size(), 0);
 });
 
+test('GET /r records click events and redirects to safe targets', async () => {
+  const env = createEnv();
+  const response = await handleRequest(
+    new Request('http://worker.local/r?u=https%3A%2F%2Fexample.com%2Fstory&briefing_id=2026-05-19-08&item_id=2026-05-19-08-001&channel=site'),
+    env,
+  );
+
+  assert.equal(response.status, 302);
+  assert.equal(response.headers.get('Location'), 'https://example.com/story');
+  assert.equal(env.FEEDBACK_STORE.size(), 1);
+
+  const storedEvent = env.FEEDBACK_STORE.all()[0];
+  assert.equal(storedEvent.event_type, 'click');
+  assert.equal(storedEvent.channel, 'site');
+  assert.equal(storedEvent.briefing_id, '2026-05-19-08');
+  assert.equal(storedEvent.item_id, '2026-05-19-08-001');
+  assert.equal(storedEvent.target_url, 'https://example.com/story');
+  assert.equal(storedEvent.metadata_json, null);
+  assert.match(storedEvent.id, /^evt_/);
+  assert.match(storedEvent.idempotency_key, /^[0-9a-f]{8}$/);
+  assert.match(storedEvent.time_bucket, /^\d{12}$/);
+  assert.match(storedEvent.created_at, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test('GET /r rejects click tracking links without an item_id', async () => {
+  const env = createEnv();
+  const response = await handleRequest(
+    new Request('http://worker.local/r?u=https%3A%2F%2Fexample.com%2Fstory&briefing_id=2026-05-19-08&channel=site'),
+    env,
+  );
+
+  assert.equal(response.status, 400);
+  assert.match(await response.text(), /invalid redirect request/i);
+  assert.equal(env.FEEDBACK_STORE.size(), 0);
+});
+
 test('GET /r rejects unsafe redirect targets', async () => {
   const response = await handleRequest(
     new Request('http://worker.local/r?u=javascript%3Aalert(1)&briefing_id=2026-05-19-08&item_id=2026-05-19-08-001&channel=site'),
