@@ -1,0 +1,31 @@
+{{- $briefingID := .Get "briefing_id" -}}
+{{- $itemID := .Get "item_id" -}}
+{{- $source := .Get "source" -}}
+{{- $tags := .Get "tags" -}}
+{{- $feedback := .Site.Params.feedback | default (dict) -}}
+{{- if and $feedback.enabled $feedback.workerBaseUrl $feedback.widgetEnabled $briefingID $itemID -}}
+  <section
+    class="item-feedback-widget"
+    aria-label="新闻条目反馈 {{ $itemID }}"
+    data-feedback-item
+    data-feedback-briefing-id="{{ $briefingID }}"
+    data-feedback-item-id="{{ $itemID }}"
+    data-feedback-source="{{ $source }}"
+    data-feedback-tags="{{ $tags }}"
+  >
+    <div class="feedback-actions" role="group" aria-label="评价新闻条目 {{ $itemID }}">
+      <button type="button" class="feedback-button" data-feedback-action="like">👍 喜欢这条</button>
+      <button type="button" class="feedback-button" data-feedback-action="dislike">👎 不喜欢这条</button>
+    </div>
+    <p class="feedback-status" data-feedback-status aria-live="polite">尚未评价这条新闻。</p>
+    <noscript>
+      <p class="feedback-note">
+        未启用 JavaScript，可打开
+        <a href="{{ $.Site.Params.feedback.workerBaseUrl }}/f?action=like&amp;briefing_id={{ $briefingID }}&amp;item_id={{ $itemID }}&amp;channel=site">喜欢</a>
+        或
+        <a href="{{ $.Site.Params.feedback.workerBaseUrl }}/f?action=dislike&amp;briefing_id={{ $briefingID }}&amp;item_id={{ $itemID }}&amp;channel=site">不喜欢</a>
+        反馈链接。
+      </p>
+    </noscript>
+  </section>
+{{- end -}}

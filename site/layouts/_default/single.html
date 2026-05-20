@@ -21,12 +21,11 @@
       </section>
     {{ end }}
 
-    <section>
+    <section class="briefing-content">
       {{ .Content }}
     </section>
 
     {{ if and $feedback.enabled $feedback.workerBaseUrl }}
-      {{ partial "feedback-widget.html" . }}
       <script id="newsroom-feedback-config" type="application/json">
         {
           "enabled": true,

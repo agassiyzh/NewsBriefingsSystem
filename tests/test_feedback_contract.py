@@ -147,6 +147,8 @@ def test_hugo_build_with_feedback_enabled_renders_widget_and_tracking_config(tmp
     html_path = _build_hugo(site_dir, tmp_path / "public-enabled")
     html = html_path.read_text(encoding="utf-8")
 
+    assert 'class="briefing-content"' in html
+    assert 'class="news-item-card"' in html
     assert 'class="item-feedback-widget"' in html
     assert 'data-feedback-item-id="2026-05-19-08-001"' in html
     assert 'data-feedback-briefing-id="2026-05-19-08"' in html
@@ -154,7 +156,13 @@ def test_hugo_build_with_feedback_enabled_renders_widget_and_tracking_config(tmp
     assert 'data-feedback-tags="AI Agent,Tooling"' in html
     assert 'data-feedback-action="like"' in html
     assert 'data-feedback-action="dislike"' in html
+    assert '<section class="item-feedback-list"' not in html
     assert '<section class="feedback-widget"' not in html
+
+    item_heading = html.index('Agent copilots ship for developers')
+    item_feedback = html.index('class="item-feedback-widget"', item_heading)
+    next_item_heading = html.index('Robotics retail pilots expand')
+    assert item_heading < item_feedback < next_item_heading
     assert "feedback.js" in html
     assert "newsroom-feedback-config" in html
     assert "newsroom-feedback-items" in html

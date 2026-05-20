@@ -10,6 +10,11 @@ enableRobotsTXT = true
 [params]
   description = "面向个人研究与项目灵感的 AI 新闻简报档案。"
 
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+
 [params.feedback]
   enabled = false
   workerBaseUrl = ""

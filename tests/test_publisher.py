@@ -216,6 +216,8 @@ def test_export_archive_to_hugo_writes_front_matter_and_slot_metadata(tmp_path):
     assert front_matter["slots"][0]["briefing_id"] == "2026-05-19-08"
     assert "## 08:00 早间版" in body
     assert "- item_id: 2026-05-19-08-001" in body
+    assert '<section class="news-item-card" data-news-item-id="2026-05-19-08-001">' in body
+    assert '{{< item-feedback briefing_id="2026-05-19-08" item_id="2026-05-19-08-001" source="Working Feed" tags="AI Agent,Tooling" >}}' in body
     assert "## 今日沉淀" in body
 
 

@@ -22,6 +22,7 @@ ITEM_ID_RE = re.compile(r'-\s*item_id:\s*(.+)')
 SOURCE_RE = re.compile(r'-\s*source:\s*(.+)')
 URL_RE = re.compile(r'-\s*url:\s*(.+)')
 TAGS_RE = re.compile(r'-\s*tags:\s*\[(.*)\]')
+ITEM_HEADING_RE = re.compile(r'###\s+(.+)')
 
 
 @dataclass(slots=True)
@@ -246,6 +247,16 @@ def render_archive_slot(result: CollectResult) -> str:
         if candidate.get('snippet'):
             lines.append('')
             lines.append(f"摘要：{candidate['snippet']}")
+        tags_param = ','.join(candidate.get('tags', []))
+        lines.append('')
+        lines.append(
+            '{{< item-feedback '
+            f'briefing_id="{result.briefing_id}" '
+            f'item_id="{candidate['item_id']}" '
+            f'source="{candidate.get('source', '')}" '
+            f'tags="{tags_param}" '
+            '>}}'
+        )
         lines.append('')
     return '\n'.join(lines).rstrip()
 
@@ -363,6 +374,83 @@ def _front_matter_datetime(briefing_day: str, timezone_name: str) -> str:
     return f'{briefing_day}T08:00:00{offset}'
 
 
+def _shortcode_attr_value(value: str) -> str:
+    return value.replace('\\', '\\\\').replace('"', '\\"')
+
+
+def _render_item_feedback_shortcode(item: dict[str, Any], briefing_id: str | None) -> str:
+    if not briefing_id or not item.get('item_id'):
+        return ''
+    tags_param = ','.join(item.get('tags', []))
+    attrs = {
+        'briefing_id': briefing_id,
+        'item_id': item['item_id'],
+        'source': item.get('source', '') or '',
+        'tags': tags_param,
+    }
+    attr_text = ' '.join(f'{key}="{_shortcode_attr_value(value)}"' for key, value in attrs.items())
+    return f'{{{{< item-feedback {attr_text} >}}}}'
+
+
+def _render_news_item_card(item_lines: list[str], item: dict[str, Any] | None, briefing_id: str | None) -> list[str]:
+    if not item_lines:
+        return []
+    if not item or not item.get('item_id'):
+        return item_lines
+    rendered = [f'<section class="news-item-card" data-news-item-id="{_shortcode_attr_value(item["item_id"])}">']
+    rendered.extend(item_lines)
+    shortcode = _render_item_feedback_shortcode(item, briefing_id)
+    if shortcode:
+        rendered.append('')
+        rendered.append(shortcode)
+    rendered.append('</section>')
+    return rendered
+
+
+def render_hugo_content_with_inline_feedback(archive_text: str, briefing_day: str) -> str:
+    """Render archive Markdown with feedback shortcodes after each news item.
+
+    The Markdown archive remains human-readable source material; Hugo content adds a
+    shortcode immediately after each item body so the UI control appears under the
+    corresponding news item rather than as a summary block at the bottom.
+    """
+    title, sections = parse_archive_sections(archive_text, briefing_day)
+    lines = [title, '']
+    for header in ordered_archive_headers():
+        body = sections.get(header, '').strip()
+        if not body and header == SETTLING_HEADER:
+            body = DEFAULT_SETTLING_BODY
+        lines.append(header)
+        lines.append('')
+        if header == SETTLING_HEADER:
+            if body:
+                lines.extend(body.splitlines())
+                lines.append('')
+            continue
+
+        briefing_id, items = _parse_archive_slot_metadata(body)
+        item_by_heading = {item.get('heading'): item for item in items if item.get('heading')}
+        current_item: dict[str, Any] | None = None
+        current_item_lines: list[str] = []
+        for raw_line in body.splitlines():
+            heading_match = ITEM_HEADING_RE.match(raw_line.strip())
+            if heading_match:
+                lines.extend(_render_news_item_card(current_item_lines, current_item, briefing_id))
+                current_item = item_by_heading.get(heading_match.group(1).strip())
+                current_item_lines = [raw_line]
+                continue
+            if current_item is not None:
+                if raw_line.strip().startswith('{{< item-feedback'):
+                    continue
+                current_item_lines.append(raw_line)
+                continue
+            lines.append(raw_line)
+
+        lines.extend(_render_news_item_card(current_item_lines, current_item, briefing_id))
+        lines.append('')
+    return '\n'.join(lines).rstrip() + '\n'
+
+
 def export_archive_to_hugo(
     *,
     archive_path: str | Path,
@@ -434,7 +522,8 @@ def export_archive_to_hugo(
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     front_matter_text = yaml.safe_dump(front_matter, sort_keys=False, allow_unicode=True).strip()
-    output.write_text(f'---\n{front_matter_text}\n---\n\n{archive_text.rstrip()}\n', encoding='utf-8')
+    hugo_content = render_hugo_content_with_inline_feedback(archive_text, briefing_day)
+    output.write_text(f'---\n{front_matter_text}\n---\n\n{hugo_content.rstrip()}\n', encoding='utf-8')
     return {
         'briefing_day': briefing_day,
         'item_count': total_items,
