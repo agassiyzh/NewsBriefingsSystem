@@ -9,3 +9,10 @@ enableRobotsTXT = true
 
 [params]
   description = "面向个人研究与项目灵感的 AI 新闻简报档案。"
+
+[params.feedback]
+  enabled = false
+  workerBaseUrl = ""
+  widgetEnabled = false
+  trackLinks = false
+  dwellEnabled = false

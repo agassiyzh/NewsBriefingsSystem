@@ -22,6 +22,11 @@ publication:
 
 feedback:
   provider: cloudflare_worker_d1
+  enabled: false
+  worker_base_url: ""
+  widget_enabled: false
+  track_links: false
+  dwell_enabled: false
   collect_ip_plaintext: false
   collect_telegram_user_id: false
   default_channel: unknown

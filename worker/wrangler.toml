@@ -1,0 +1,17 @@
+name = "newsroom-feedback"
+main = "src/worker.mjs"
+compatibility_date = "2024-11-11"
+
+workers_dev = true
+
+[vars]
+ENVIRONMENT = "production"
+ALLOWED_ORIGINS = "https://www.yuzhuohui.info,https://newsroom-feedback.agassi212451.workers.dev"
+PUBLIC_SITE_BASE_URL = "https://www.yuzhuohui.info/NewsBriefingsSystem/"
+FEEDBACK_VERSION = "phase4-mvp"
+ENABLE_PUBLIC_FEEDBACK_FALLBACK = "true"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "newsroom_feedback"
+database_id = "b0f83b49-c710-4fe9-9856-d8194bf33479"

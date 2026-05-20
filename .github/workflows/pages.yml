@@ -45,6 +45,20 @@ jobs:
           hugo-version: '0.147.9'
           extended: false
 
+      - name: Enable production feedback
+        if: ${{ vars.NEWSROOM_FEEDBACK_WORKER_BASE_URL != '' }}
+        env:
+          NEWSROOM_FEEDBACK_WORKER_BASE_URL: ${{ vars.NEWSROOM_FEEDBACK_WORKER_BASE_URL }}
+        run: python scripts/configure_hugo_feedback.py
+
+      - name: Show feedback build mode
+        run: |
+          if [ -n "${{ vars.NEWSROOM_FEEDBACK_WORKER_BASE_URL }}" ]; then
+            echo "Feedback enabled for this Pages build."
+          else
+            echo "Feedback disabled: NEWSROOM_FEEDBACK_WORKER_BASE_URL repository variable is not set."
+          fi
+
       - name: Build site
         working-directory: site
         run: hugo --minify --baseURL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"

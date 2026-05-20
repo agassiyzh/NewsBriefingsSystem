@@ -194,6 +194,25 @@ def test_export_archive_to_hugo_writes_front_matter_and_slot_metadata(tmp_path):
     assert front_matter["item_ids"] == ["2026-05-19-08-001", "2026-05-19-13-001"]
     assert front_matter["sources"] == ["Noon Feed", "Working Feed"]
     assert front_matter["tags"] == ["AI Agent", "Robotics", "Tooling"]
+    assert front_matter["feedback_primary_briefing_id"] == "2026-05-19-08"
+    assert front_matter["feedback_items"] == [
+        {
+            "slot": "morning",
+            "briefing_id": "2026-05-19-08",
+            "item_id": "2026-05-19-08-001",
+            "source": "Working Feed",
+            "url": "https://example.com/story",
+            "tags": ["AI Agent", "Tooling"],
+        },
+        {
+            "slot": "noon",
+            "briefing_id": "2026-05-19-13",
+            "item_id": "2026-05-19-13-001",
+            "source": "Noon Feed",
+            "url": "https://example.com/noon",
+            "tags": ["Robotics"],
+        },
+    ]
     assert front_matter["slots"][0]["briefing_id"] == "2026-05-19-08"
     assert "## 08:00 早间版" in body
     assert "- item_id: 2026-05-19-08-001" in body

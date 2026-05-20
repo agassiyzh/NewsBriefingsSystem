@@ -1,0 +1,14 @@
+<section class="feedback-widget" aria-labelledby="feedback-widget-title"{{ if not .Site.Params.feedback.widgetEnabled }} hidden{{ end }}>
+  <div class="feedback-copy">
+    <h2 id="feedback-widget-title">这期简报有帮助吗？</h2>
+    <p>默认仅支持本地 mock / dry-run。记录失败不会影响阅读。</p>
+  </div>
+  <div class="feedback-actions" role="group" aria-label="简报反馈">
+    <button type="button" class="feedback-button" data-feedback-action="like">👍 喜欢</button>
+    <button type="button" class="feedback-button" data-feedback-action="dislike">👎 不喜欢</button>
+  </div>
+  <p class="feedback-status" data-feedback-status aria-live="polite">反馈默认关闭；启用本地 mock 后会在这里显示结果。</p>
+  <noscript>
+    <p class="feedback-note">未启用 JavaScript 时不会自动记录反馈，阅读内容不受影响。</p>
+  </noscript>
+</section>

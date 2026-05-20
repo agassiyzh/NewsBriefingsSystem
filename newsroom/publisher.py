@@ -374,10 +374,12 @@ def export_archive_to_hugo(
     title, sections = parse_archive_sections(archive_text, briefing_day)
 
     slots: list[dict[str, Any]] = []
+    feedback_items: list[dict[str, Any]] = []
     item_ids: list[str] = []
     sources: set[str] = set()
     tags: set[str] = set()
     total_items = 0
+    primary_briefing_id: str | None = None
 
     for header in ordered_archive_headers():
         body = sections.get(header, '').strip()
@@ -385,6 +387,8 @@ def export_archive_to_hugo(
             continue
         briefing_id, items = _parse_archive_slot_metadata(body)
         slot_name = normalize_slot(header.removeprefix('## ').strip())
+        if primary_briefing_id is None and briefing_id:
+            primary_briefing_id = briefing_id
         total_items += len(items)
         for item in items:
             if item.get('item_id'):
@@ -393,6 +397,16 @@ def export_archive_to_hugo(
                 sources.add(item['source'])
             for tag in item.get('tags', []):
                 tags.add(tag)
+            feedback_items.append(
+                {
+                    'slot': slot_name,
+                    'briefing_id': briefing_id,
+                    'item_id': item.get('item_id'),
+                    'source': item.get('source'),
+                    'url': item.get('url'),
+                    'tags': list(item.get('tags', [])),
+                }
+            )
         slots.append(
             {
                 'slot': slot_name,
@@ -411,6 +425,8 @@ def export_archive_to_hugo(
         'item_ids': item_ids,
         'sources': sorted(sources),
         'tags': sorted(tags),
+        'feedback_primary_briefing_id': primary_briefing_id,
+        'feedback_items': feedback_items,
         'slots': slots,
         'draft': False,
     }
@@ -425,6 +441,8 @@ def export_archive_to_hugo(
         'item_ids': item_ids,
         'sources': sorted(sources),
         'tags': sorted(tags),
+        'feedback_primary_briefing_id': primary_briefing_id,
+        'feedback_item_count': len(feedback_items),
     }
 
 

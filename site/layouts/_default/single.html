@@ -1,5 +1,11 @@
 {{ define "main" }}
-  <article>
+  {{ $feedback := .Site.Params.feedback | default (dict) }}
+  <article
+    data-feedback-page="briefing"
+    data-briefing-day="{{ .Params.briefing_day }}"
+    data-feedback-primary-briefing-id="{{ .Params.feedback_primary_briefing_id }}"
+    data-channel="site"
+  >
     <p><a href="{{ "/" | relURL }}">← 返回首页</a></p>
     <h1>{{ .Title }}</h1>
     <p class="meta">{{ .Params.briefing_day }} · 共 {{ .Params.item_count }} 条候选 · 时区 {{ .Params.timezone }}</p>
@@ -7,7 +13,7 @@
     {{ with .Params.slots }}
       <section class="slot-summary">
         {{ range . }}
-          <div class="slot-card">
+          <div class="slot-card" data-briefing-id="{{ .briefing_id }}" data-slot="{{ .slot }}">
             <strong>{{ .label }}</strong>
             <div class="slot-meta">briefing_id={{ .briefing_id }} · item_count={{ .item_count }}</div>
           </div>
@@ -18,5 +24,21 @@
     <section>
       {{ .Content }}
     </section>
+
+    {{ if and $feedback.enabled $feedback.workerBaseUrl }}
+      {{ partial "feedback-widget.html" . }}
+      <script id="newsroom-feedback-config" type="application/json">
+        {
+          "enabled": true,
+          "workerBaseUrl": {{ $feedback.workerBaseUrl }},
+          "widgetEnabled": {{ $feedback.widgetEnabled }},
+          "trackLinks": {{ $feedback.trackLinks }},
+          "dwellEnabled": {{ $feedback.dwellEnabled }},
+          "primaryBriefingId": {{ .Params.feedback_primary_briefing_id }},
+          "channel": "site"
+        }
+      </script>
+      <script id="newsroom-feedback-items" type="application/json">{{ .Params.feedback_items | jsonify | safeJS }}</script>
+    {{ end }}
   </article>
 {{ end }}

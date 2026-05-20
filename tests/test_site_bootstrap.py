@@ -62,6 +62,15 @@ def test_ensure_sample_briefing_export_generates_hugo_content(tmp_path):
     assert front_matter["briefing_day"] == "2026-01-01"
     assert front_matter["item_count"] == 2
     assert front_matter["item_ids"] == ["2026-01-01-08-001", "2026-01-01-13-001"]
+    assert front_matter["feedback_primary_briefing_id"] == "2026-01-01-08"
+    assert front_matter["feedback_items"][0] == {
+        "slot": "morning",
+        "briefing_id": "2026-01-01-08",
+        "item_id": "2026-01-01-08-001",
+        "source": "Example Feed",
+        "url": "https://example.com/agent-workflow",
+        "tags": ["AI Agent", "Tooling"],
+    }
     assert "# 新闻雷达｜2026-01-01" in body
     assert "## 今日沉淀" in body
 

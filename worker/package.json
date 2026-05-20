@@ -1,0 +1,15 @@
+{
+  "name": "newsroom-feedback-worker",
+  "private": true,
+  "scripts": {
+    "test": "node --test ./test/*.test.js",
+    "wrangler": "wrangler",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.93.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

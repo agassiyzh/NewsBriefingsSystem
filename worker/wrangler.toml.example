@@ -1,0 +1,14 @@
+name = "newsroom-feedback"
+main = "src/index.js"
+compatibility_date = "2026-05-01"
+
+[vars]
+ENVIRONMENT = "local"
+ALLOWED_ORIGINS = "http://localhost:1313,http://127.0.0.1:8787,https://www.yuzhuohui.info"
+PUBLIC_SITE_BASE_URL = "https://www.yuzhuohui.info/NewsBriefingsSystem/"
+FEEDBACK_VERSION = "phase4-mvp"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "newsroom_feedback_local_or_future"
+database_id = "00000000-0000-0000-0000-000000000000"

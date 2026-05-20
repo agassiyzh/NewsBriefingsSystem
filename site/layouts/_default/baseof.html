@@ -100,11 +100,53 @@
         padding: 0.1rem 0.3rem;
         border-radius: 6px;
       }
+      .feedback-widget {
+        margin-top: 2rem;
+        padding: 1rem 1.1rem;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--surface), transparent 12%);
+      }
+      .feedback-widget h2 {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+      .feedback-copy p,
+      .feedback-note,
+      .feedback-status {
+        color: var(--muted);
+      }
+      .feedback-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin: 1rem 0 0.75rem;
+      }
+      .feedback-button {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        border-radius: 999px;
+        padding: 0.55rem 0.9rem;
+        cursor: pointer;
+        font: inherit;
+      }
+      .feedback-button:hover {
+        border-color: var(--accent);
+      }
+      .feedback-status[data-state="error"] {
+        color: #fca5a5;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       {{ block "main" . }}{{ end }}
     </div>
+    {{ $feedback := .Site.Params.feedback | default (dict) }}
+    {{ if and $feedback.enabled $feedback.workerBaseUrl (or $feedback.widgetEnabled $feedback.trackLinks $feedback.dwellEnabled) }}
+      <script defer src="{{ "feedback.js" | relURL }}"></script>
+    {{ end }}
   </body>
 </html>
