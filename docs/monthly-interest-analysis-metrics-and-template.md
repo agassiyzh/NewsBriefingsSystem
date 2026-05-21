@@ -16,7 +16,7 @@
    - `site/static/feedback.js` 允许 metadata 白名单包含 `source`、`tag`、`tags`、`scope`、`dwell_bucket`、`client_version`。
 
 3. 分析角色边界
-   - `prompts/analyst.md` 规定 Analyst 输出月度事实发现、解释假设、编辑建议、置信度和建议写入 Honcho 的草案；禁止直接写入 Honcho，必须交由 Editor 审核。
+   - `prompts/analyst.md` 规定 Analyst 输出月度事实发现、解释假设、编辑建议、置信度和提交给 Editor 的 Editor recommendation brief；禁止直接写入 Honcho/Hermes memory，必须交由 Editor 审核后由 Editor profile 自己写入。
    - `docs/phase4-feedback-authorization-note.md` 要求不采集或公开真实身份、精确位置、设备指纹、明文 IP、Telegram user id；月度分析应优先使用聚合数据。
 
 ## 1. 关键发现
@@ -37,13 +37,13 @@
 
 证据：Phase 4 文档已提示匿名小流量也可能暴露阅读偏好；低样本下单次 like/dislike 或点击会造成极端百分比。
 
-### 发现 3：可写入 Honcho/memory 的只能是跨月稳定、可操作的 editorial preference
+### 发现 3：可提交给 Editor memory 的只能是跨月稳定、可操作的 editorial preference
 
-结论：例如“连续 3 个月，AI agent 工具链 tag 的深读率显著高于月均，建议保持高权重”可以进入候选 memory；“本月某条新闻被点击 4 次”或 raw event 不能写入。
+结论：例如“连续 3 个月，AI agent 工具链 tag 的深读率显著高于月均，建议保持高权重”可以作为 Analyst Editor recommendation brief 提交给 Editor；是否写入 Hermes/Honcho memory 由 Editor profile 审核决定。“本月某条新闻被点击 4 次”或 raw event 不能写入。
 
 置信度：高。
 
-证据：任务约束明确“不写 raw event 到 memory，只建议稳定 editorial preference”；Analyst prompt 也要求“建议写入 Honcho 的草案”，不是直接写入。
+证据：任务约束明确“不写 raw event 到 memory，只建议稳定 editorial preference”；Analyst prompt 也要求输出给 Editor 的 brief，不允许直接写入。
 
 ### 发现 4：报告应同时保留“趋势/项目灵感/投资观察/来源质量/降权内容/下月策略”六个视角
 

@@ -7,7 +7,7 @@
 输入：
 - briefing_id、slot、当天已归档摘要。
 - Reporter 提供的 Markdown context 与 JSONL candidates。
-- 经审核的长期编辑偏好（未来由 Honcho 提供）。
+- Editor profile 自己的 Hermes/Honcho memory 中经审核的长期编辑偏好；这些偏好不由新闻仓库脚本直接写入。
 
 输出：
 - 3–5 条高价值新闻卡片，每条包含 item_id、标题、极简摘要、为什么和小於有关、原文链接。
@@ -19,4 +19,4 @@
 - 不编造未验证事实、发布时间或来源。
 - 不泄露私密行程、客户信息、凭证或内部链接。
 - 不修改 cron、Telegram 配置、Cloudflare / GitHub 资源。
-- 不把未经审校的情绪或猜测写入长期记忆。
+- 只把稳定、跨月、声明性的偏好写入自己的 Hermes/Honcho memory；不把未经审校的情绪、猜测、raw events 或单条新闻写入长期记忆。

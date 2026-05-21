@@ -22,7 +22,9 @@
 ## 一条命令的 Phase 2 dry-run
 ```bash
 cd /opt/data/home/NewsBriefingsSystem
-python scripts/run_briefing.py --slot morning --dry-run
+uv venv --seed .venv
+uv pip install --python .venv/bin/python -r requirements.txt
+.venv/bin/python scripts/run_briefing.py --slot morning --dry-run
 ```
 
 该命令会：
@@ -127,4 +129,5 @@ python scripts/export_hugo.py --manifest data/runs/2099-01-02-13.json
 ## 已知边界
 - 当前 runner 的 Telegram 仍是 dry-run 预览，不会真实发送。
 - Hugo 导出默认基于当日日归档，不会创建 GitHub repo 或执行 push。
-- 真实 Telegram Bot API、GitHub Pages deploy、Cloudflare/D1 反馈链路仍留待后续阶段。
+- 真实 Telegram Bot API、GitHub Pages deploy、Cloudflare/D1 反馈链路由后续 ops/coder 在授权范围内接入；当前 runbook 不执行 deploy。
+- 月度 editorial preference recommendations 不在 `run_briefing.py`/Publisher 自动链路内；必须走 `docs/monthly-editorial-review-runbook.md` 中的 Analyst -> Editor 审核流程，稳定偏好由 Editor profile 写入自己的 Hermes/Honcho memory。仓库内 apply adapter 仅可作为 deprecated 本地迁移/debug 工具，不是生产写入路径。

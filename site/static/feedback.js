@@ -238,6 +238,7 @@
       targetUrl: options.targetUrl,
       idempotencyKey: options.idempotencyKey,
     });
+    const trackingNonce = String(options.trackingNonce || createTrackingNonce()).trim();
     const params = new URLSearchParams({
       u: payload.target_url,
       briefing_id: payload.briefing_id,
@@ -246,6 +247,9 @@
       params.set('item_id', payload.item_id);
     }
     params.set('channel', payload.channel);
+    if (trackingNonce) {
+      params.set('n', trackingNonce);
+    }
     return `${baseUrl}/r?${params.toString()}`;
   }
 
@@ -296,6 +300,13 @@
     const created = createAnonymousId();
     storage.setItem(STORAGE_KEY, created);
     return created;
+  }
+
+  function createTrackingNonce() {
+    if (globalScope.crypto && typeof globalScope.crypto.randomUUID === 'function') {
+      return `trk_${globalScope.crypto.randomUUID().replace(/-/g, '')}`;
+    }
+    return `trk_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
   }
 
   function setStatus(statusRoot, message, isError) {
@@ -409,12 +420,21 @@
       anchor.dataset.feedbackBriefingId = item.briefing_id || config.primaryBriefingId || '';
       anchor.dataset.feedbackOriginalUrl = originalHref;
       anchor.rel = 'noopener noreferrer';
-      anchor.href = buildTrackingUrl(config.workerBaseUrl, {
+      const trackingOptions = {
         targetUrl: originalHref,
         briefingId: item.briefing_id || config.primaryBriefingId,
         itemId: item.item_id,
         channel: config.channel || 'site',
-      });
+      };
+      const refreshTrackedHref = function () {
+        anchor.href = buildTrackingUrl(config.workerBaseUrl, {
+          ...trackingOptions,
+          trackingNonce: createTrackingNonce(),
+        });
+      };
+      refreshTrackedHref();
+      anchor.addEventListener('click', refreshTrackedHref);
+      anchor.addEventListener('auxclick', refreshTrackedHref);
     });
   }
 

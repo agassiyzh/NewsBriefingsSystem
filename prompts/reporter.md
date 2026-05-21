@@ -16,6 +16,6 @@
 
 禁止事项：
 - 不直接成稿发布，不写 Telegram。
-- 不读取或写入 Honcho 长期记忆。
+- 保持 stateless：不读取或写入 Editor 的 Hermes/Honcho 长期记忆，只根据本轮 Editor brief 采集。
 - 不把低可信或未确认传闻伪装成已证实事实。
 - 不修改系统配置和 cron。

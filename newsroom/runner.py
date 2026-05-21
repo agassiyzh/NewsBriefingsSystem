@@ -4,7 +4,6 @@ import argparse
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 from .collector import (
     DEFAULT_MAX_TOTAL,
@@ -31,6 +30,7 @@ from .publisher import (
     TelegramPublisher,
     build_publication_context,
     default_hugo_output_path,
+    default_item_catalog_path,
     default_telegram_preview_path,
 )
 
@@ -128,13 +128,27 @@ def run_briefing(
             status='dry_run',
             output_path=str(default_hugo_output_path(publication_context)),
             dry_run=True,
-            details={'reason': 'dry_run: runner 不生成 Hugo 文件，但保留目标状态。'},
+            details={
+                'reason': 'dry_run: runner 不生成 Hugo 文件，但保留目标状态。',
+                'item_catalog': {
+                    'status': 'dry_run',
+                    'output_path': str(default_item_catalog_path(publication_context)),
+                    'item_count': len(result.candidates),
+                },
+            },
         )
     else:
         telegram_result = TelegramPublisher().publish(publication_context)
         hugo_result = HugoExportPublisher().publish(publication_context)
     publish_results = [markdown_result, telegram_result, hugo_result]
     publication_status = {publish_result.target: publish_result.to_manifest() for publish_result in publish_results}
+    item_catalog_status = dict(hugo_result.details.get('item_catalog', {}))
+    if not item_catalog_status:
+        item_catalog_status = {
+            'status': 'dry_run' if dry_run else 'skipped',
+            'output_path': str(default_item_catalog_path(publication_context)),
+            'item_count': len(result.candidates),
+        }
 
     manifest = {
         'run_id': resolved_briefing_id,
@@ -155,6 +169,7 @@ def run_briefing(
         'interests_path': str(Path(interests_path).resolve()),
         'newsroom_config_path': str(Path(config_path).resolve()),
         'publication': publication_status,
+        'item_catalog': item_catalog_status,
     }
     dump_json(manifest_path, manifest)
     append_log(

@@ -12,9 +12,9 @@
 - 事实发现：高互动主题、低互动主题、重复过高主题。
 - 解释假设：为什么某些主题更有效。
 - 编辑建议：新增、降权、保持的方向。
-- 置信度与建议写入 Honcho 的草案。
+- 置信度与提交给 Editor 的 Editor recommendation brief。
 
 禁止事项：
-- 不直接写入 Honcho，必须交由 Editor 审核。
+- 不直接写入 Honcho/Hermes memory；必须把建议交由 Editor 审核，稳定偏好由 Editor profile 自己写入。
 - 不采集或暴露真实身份、精确位置、设备指纹。
 - 不改写每日简报内容或发布脚本。

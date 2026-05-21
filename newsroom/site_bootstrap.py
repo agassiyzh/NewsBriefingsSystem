@@ -5,6 +5,8 @@ from pathlib import Path
 
 from .publisher import export_archive_to_hugo
 
+DEFAULT_SAMPLE_ITEM_CATALOG_DIR = "data/item_catalog"
+
 DEFAULT_SAMPLE_BRIEFING_DAY = "2026-01-01"
 DEFAULT_SAMPLE_TIMEZONE = "Asia/Shanghai"
 DEFAULT_SAMPLE_ARCHIVE_TEXT = (
@@ -45,6 +47,11 @@ def default_sample_output_path(system_dir: str | Path) -> Path:
     return root / "site" / "content" / "briefings" / DEFAULT_SAMPLE_BRIEFING_DAY[:4] / f"{DEFAULT_SAMPLE_BRIEFING_DAY}.md"
 
 
+def default_sample_item_catalog_path(system_dir: str | Path) -> Path:
+    root = Path(system_dir)
+    return root / DEFAULT_SAMPLE_ITEM_CATALOG_DIR / DEFAULT_SAMPLE_BRIEFING_DAY[:4] / f"{DEFAULT_SAMPLE_BRIEFING_DAY}.jsonl"
+
+
 def ensure_sample_archive(archive_path: str | Path, *, force: bool = False) -> Path:
     target = Path(archive_path)
     if force or not target.exists():
@@ -63,13 +70,30 @@ def ensure_sample_briefing_export(
 ) -> Path:
     resolved_archive = ensure_sample_archive(archive_path or default_sample_archive_path(system_dir), force=force)
     resolved_output = Path(output_path) if output_path else default_sample_output_path(system_dir)
-    if resolved_output.exists() and not force:
+    resolved_item_catalog = default_sample_item_catalog_path(system_dir)
+    if resolved_output.exists() and resolved_item_catalog.exists() and not force:
         return resolved_output
+    if resolved_output.exists() and not force:
+        bootstrap_output = resolved_output.with_name(f".{resolved_output.stem}.item-catalog-bootstrap{resolved_output.suffix}")
+        try:
+            metadata = export_archive_to_hugo(
+                archive_path=resolved_archive,
+                output_path=bootstrap_output,
+                briefing_day=DEFAULT_SAMPLE_BRIEFING_DAY,
+                timezone_name=timezone_name,
+                item_catalog_path=resolved_item_catalog,
+            )
+        finally:
+            bootstrap_output.unlink(missing_ok=True)
+        item_catalog = metadata.get("item_catalog", {})
+        if item_catalog.get("status") == "updated":
+            return resolved_output
     export_archive_to_hugo(
         archive_path=resolved_archive,
         output_path=resolved_output,
         briefing_day=DEFAULT_SAMPLE_BRIEFING_DAY,
         timezone_name=timezone_name,
+        item_catalog_path=resolved_item_catalog,
     )
     return resolved_output
 

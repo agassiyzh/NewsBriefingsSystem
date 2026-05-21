@@ -6,7 +6,9 @@
 ## 一条命令的 dry-run
 ```bash
 cd /opt/data/home/NewsBriefingsSystem
-python scripts/run_briefing.py --slot morning --dry-run
+uv venv --seed .venv
+uv pip install --python .venv/bin/python -r requirements.txt
+.venv/bin/python scripts/run_briefing.py --slot morning --dry-run
 ```
 
 该命令会：
@@ -78,3 +80,4 @@ JSONL 候选至少包含：
 - 将 Publisher/Telegram 封装为显式适配器并做失败重试。
 - 为 Hugo export、Monthly analysis、Worker schema 增加测试与 schema 文档。
 - 根据 Editor 最终稿格式补全“候选上下文 -> 成稿正文 -> 归档发布”之间的接口契约。
+- 月度审核请遵循 `docs/monthly-editorial-review-runbook.md`：Analyst 先生成 `pending_review` 建议，Editor profile 审核稳定偏好后写入自己的 Hermes/Honcho memory；仓库内 apply adapter 仅可作为 deprecated 的本地迁移/debug 工具，不属于生产路径。

@@ -15,6 +15,7 @@ DEFAULT_PATHS = {
     'logs_dir': 'logs',
     'telegram_previews_dir': 'data/telegram',
     'hugo_content_dir': 'site/content/briefings',
+    'item_catalog_dir': 'data/item_catalog',
 }
 
 

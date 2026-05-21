@@ -99,6 +99,9 @@ test('buildTrackingUrl encodes worker redirect URLs for known items without leak
     briefingId: '2026-05-19-08',
     itemId: '2026-05-19-08-001',
     channel: 'site',
+    anonymousId: 'anon_test_12345678',
+    idempotencyKey: 'secret-key-should-not-leak',
+    trackingNonce: 'trk_test_12345678',
   });
 
   const parsed = new URL(trackedUrl);
@@ -108,7 +111,11 @@ test('buildTrackingUrl encodes worker redirect URLs for known items without leak
   assert.equal(parsed.searchParams.get('briefing_id'), '2026-05-19-08');
   assert.equal(parsed.searchParams.get('item_id'), '2026-05-19-08-001');
   assert.equal(parsed.searchParams.get('channel'), 'site');
+  assert.equal(parsed.searchParams.get('n'), 'trk_test_12345678');
+  assert.equal(parsed.searchParams.has('anon'), false);
   assert.equal(parsed.searchParams.has('k'), false);
+  assert.equal(parsed.searchParams.has('anonymous_id'), false);
+  assert.equal(parsed.searchParams.has('idempotency_key'), false);
 });
 
 test('bucketDwellDuration returns coarse duration buckets', () => {

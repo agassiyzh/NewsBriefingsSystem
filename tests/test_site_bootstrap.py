@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -44,6 +45,7 @@ def test_ensure_sample_briefing_export_generates_hugo_content(tmp_path):
     system_dir = tmp_path / "system"
     archive_path = system_dir / "site" / "sample-data" / "2026-01-01.md"
     output_path = system_dir / "site" / "content" / "briefings" / "2026" / "2026-01-01.md"
+    item_catalog_path = system_dir / "data" / "item_catalog" / "2026" / "2026-01-01.jsonl"
     archive_path.parent.mkdir(parents=True, exist_ok=True)
     archive_path.write_text(_sample_archive_text(), encoding="utf-8")
 
@@ -57,6 +59,7 @@ def test_ensure_sample_briefing_export_generates_hugo_content(tmp_path):
     text = written_path.read_text(encoding="utf-8")
     _, front_matter_text, body = text.split("---\n", 2)
     front_matter = yaml.safe_load(front_matter_text)
+    item_catalog_rows = [json.loads(line) for line in item_catalog_path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
     assert written_path == output_path
     assert front_matter["briefing_day"] == "2026-01-01"
@@ -71,6 +74,36 @@ def test_ensure_sample_briefing_export_generates_hugo_content(tmp_path):
         "url": "https://example.com/agent-workflow",
         "tags": ["AI Agent", "Tooling"],
     }
+    assert item_catalog_rows == [
+        {
+            "briefing_day": "2026-01-01",
+            "slot": "morning",
+            "slot_label": "08:00 早间版",
+            "briefing_id": "2026-01-01-08",
+            "item_id": "2026-01-01-08-001",
+            "title": "示例：AI agent workflow 进入团队协作",
+            "source": "Example Feed",
+            "url": "https://example.com/agent-workflow",
+            "tags": ["AI Agent", "Tooling"],
+            "topic": "AI Agent",
+            "summary": "示例条目，仅用于公开演示 GitHub Pages 页面结构。",
+            "published": "",
+        },
+        {
+            "briefing_day": "2026-01-01",
+            "slot": "noon",
+            "slot_label": "13:00 午间版",
+            "briefing_id": "2026-01-01-13",
+            "item_id": "2026-01-01-13-001",
+            "title": "示例：机器人零售试点扩张",
+            "source": "Example Robotics",
+            "url": "https://example.com/robotics-retail",
+            "tags": ["Robotics"],
+            "topic": "Robotics",
+            "summary": "示例条目，仅用于公开演示 Hugo 导出。",
+            "published": "",
+        },
+    ]
     assert "# 新闻雷达｜2026-01-01" in body
     assert "## 今日沉淀" in body
 
@@ -78,13 +111,36 @@ def test_ensure_sample_briefing_export_generates_hugo_content(tmp_path):
 def test_ensure_sample_briefing_export_preserves_existing_output_without_force(tmp_path):
     system_dir = tmp_path / "system"
     output_path = system_dir / "site" / "content" / "briefings" / "2026" / "2026-01-01.md"
+    item_catalog_path = system_dir / "data" / "item_catalog" / "2026" / "2026-01-01.jsonl"
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    item_catalog_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text("sentinel\n", encoding="utf-8")
+    item_catalog_path.write_text('{"sentinel": true}\n', encoding="utf-8")
 
     written_path = ensure_sample_briefing_export(system_dir=system_dir)
 
     assert written_path == output_path
     assert output_path.read_text(encoding="utf-8") == "sentinel\n"
+    assert item_catalog_path.read_text(encoding="utf-8") == '{"sentinel": true}\n'
+
+
+def test_ensure_sample_briefing_export_backfills_missing_item_catalog_without_rewriting_output(tmp_path):
+    system_dir = tmp_path / "system"
+    archive_path = system_dir / "site" / "sample-data" / "2026-01-01.md"
+    output_path = system_dir / "site" / "content" / "briefings" / "2026" / "2026-01-01.md"
+    item_catalog_path = system_dir / "data" / "item_catalog" / "2026" / "2026-01-01.jsonl"
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    archive_path.write_text(_sample_archive_text(), encoding="utf-8")
+    output_path.write_text("sentinel\n", encoding="utf-8")
+
+    written_path = ensure_sample_briefing_export(system_dir=system_dir)
+
+    item_catalog_rows = [json.loads(line) for line in item_catalog_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert written_path == output_path
+    assert output_path.read_text(encoding="utf-8") == "sentinel\n"
+    assert item_catalog_rows[0]["item_id"] == "2026-01-01-08-001"
+    assert item_catalog_rows[1]["item_id"] == "2026-01-01-13-001"
 
 
 def test_ensure_sample_briefing_cli_writes_default_output(tmp_path):

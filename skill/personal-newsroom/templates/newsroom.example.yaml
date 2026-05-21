@@ -1,6 +1,6 @@
 system:
   timezone: Asia/Shanghai
-  archive_dir: /opt/data/home/NewsBriefings
+  archive_dir: /absolute/path/to/archive-dir
   default_language: zh-CN
 
 schedule:

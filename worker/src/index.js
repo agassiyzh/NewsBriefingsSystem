@@ -472,6 +472,10 @@ async function handleRedirect(request, env) {
     return htmlResponse(unsafeRedirectHtml(), 400);
   }
 
+  const redirectIdempotencyKey = sanitizeString(url.searchParams.get('n'), 128)
+    || sanitizeString(url.searchParams.get('k'), 128)
+    || randomHex(32);
+
   let normalized;
   try {
     normalized = validateEventPayload({
@@ -480,7 +484,7 @@ async function handleRedirect(request, env) {
       briefing_id: url.searchParams.get('briefing_id'),
       item_id: url.searchParams.get('item_id'),
       target_url: safeTarget,
-      idempotency_key: url.searchParams.get('k') || undefined,
+      idempotency_key: redirectIdempotencyKey,
     });
   } catch (_error) {
     return htmlResponse(invalidRedirectRequestHtml(), 400);

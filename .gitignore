@@ -14,3 +14,12 @@ site/.hugo_build.lock
 
 *.tmp
 *.swp
+
+# Local agent/tooling scratch directories
+$tmpdir/
+.tmp-*/
+.tmp-hugo/
+.tmp-kanban/
+.tmp-review-*/
+worker/.tmp-*/
+worker/.wrangler/

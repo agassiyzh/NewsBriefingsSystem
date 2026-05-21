@@ -17,12 +17,18 @@ SETTLING_HEADER = '## 今日沉淀'
 DEFAULT_SETTLING_BODY = '- 趋势：\n- 项目灵感：\n- 投资观察：\n- 可写内容：'
 DEFAULT_TELEGRAM_PREVIEWS_DIR = 'data/telegram'
 DEFAULT_HUGO_CONTENT_DIR = 'site/content/briefings'
+DEFAULT_ITEM_CATALOG_DIR = 'data/item_catalog'
 BRIEFING_ID_RE = re.compile(r'<!--\s*briefing_id:\s*([^>]+?)\s*-->')
 ITEM_ID_RE = re.compile(r'-\s*item_id:\s*(.+)')
 SOURCE_RE = re.compile(r'-\s*source:\s*(.+)')
 URL_RE = re.compile(r'-\s*url:\s*(.+)')
+PUBLISHED_RE = re.compile(r'-\s*published:\s*(.+)')
 TAGS_RE = re.compile(r'-\s*tags:\s*\[(.*)\]')
+TOPIC_RE = re.compile(r'-\s*topic:\s*(.+)')
+STATUS_RE = re.compile(r'-\s*status:\s*(.+)')
+ERROR_RE = re.compile(r'-\s*error:\s*(.+)')
 ITEM_HEADING_RE = re.compile(r'###\s+(.+)')
+SUMMARY_PREFIX = '摘要：'
 
 
 @dataclass(slots=True)
@@ -184,6 +190,7 @@ class HugoExportPublisher:
             )
 
         output_path = self.output_path or default_hugo_output_path(context)
+        item_catalog_path = default_item_catalog_path(context)
         if context.dry_run:
             return PublishResult(
                 target=self.target,
@@ -193,6 +200,11 @@ class HugoExportPublisher:
                 details={
                     'reason': 'dry_run: 保持 Phase 1 兼容，当前不生成 Hugo 导出文件。',
                     'item_count': len(context.collect_result.candidates),
+                    'item_catalog': {
+                        'status': 'dry_run',
+                        'output_path': str(item_catalog_path),
+                        'item_count': len(context.collect_result.candidates),
+                    },
                 },
             )
 
@@ -201,6 +213,7 @@ class HugoExportPublisher:
             output_path=output_path,
             briefing_day=context.briefing_day,
             timezone_name=context.timezone_name,
+            item_catalog_path=item_catalog_path,
         )
         return PublishResult(
             target=self.target,
@@ -312,6 +325,11 @@ def default_hugo_output_path(context: PublicationContext) -> Path:
     return resolve_path(context.system_dir, relative) / context.briefing_day[:4] / f'{context.briefing_day}.md'
 
 
+def default_item_catalog_path(context: PublicationContext) -> Path:
+    relative = context.path_config.get('item_catalog_dir', DEFAULT_ITEM_CATALOG_DIR)
+    return resolve_path(context.system_dir, relative) / context.briefing_day[:4] / f'{context.briefing_day}.jsonl'
+
+
 def render_telegram_message(context: PublicationContext) -> str:
     lines = [f'新闻雷达｜{context.briefing_day} {slot_label(context.slot)}', '']
     if not context.collect_result.candidates:
@@ -330,7 +348,14 @@ def render_telegram_message(context: PublicationContext) -> str:
     return '\n'.join(lines).strip()
 
 
-def _parse_archive_slot_metadata(section_body: str) -> tuple[str | None, list[dict[str, Any]]]:
+def _item_title_from_heading(heading: str) -> str:
+    prefix, separator, remainder = heading.partition('｜')
+    if separator and prefix.strip().isdigit() and remainder.strip():
+        return remainder.strip()
+    return heading.strip()
+
+
+def parse_archive_slot_metadata(section_body: str) -> tuple[str | None, list[dict[str, Any]]]:
     lines = section_body.splitlines()
     briefing_id: str | None = None
     items: list[dict[str, Any]] = []
@@ -348,7 +373,8 @@ def _parse_archive_slot_metadata(section_body: str) -> tuple[str | None, list[di
         if line.startswith('### '):
             if current:
                 items.append(current)
-            current = {'heading': line[4:].strip()}
+            heading = line[4:].strip()
+            current = {'heading': heading, 'title': _item_title_from_heading(heading)}
             continue
         if current is None:
             continue
@@ -361,9 +387,24 @@ def _parse_archive_slot_metadata(section_body: str) -> tuple[str | None, list[di
         if match := URL_RE.match(line):
             current['url'] = match.group(1).strip()
             continue
+        if match := PUBLISHED_RE.match(line):
+            current['published'] = match.group(1).strip()
+            continue
         if match := TAGS_RE.match(line):
             tags = [part.strip() for part in match.group(1).split(',') if part.strip()]
             current['tags'] = tags
+            continue
+        if match := TOPIC_RE.match(line):
+            current['topic'] = match.group(1).strip()
+            continue
+        if match := STATUS_RE.match(line):
+            current['status'] = match.group(1).strip()
+            continue
+        if match := ERROR_RE.match(line):
+            current['error'] = match.group(1).strip()
+            continue
+        if line.startswith(SUMMARY_PREFIX):
+            current['summary'] = line.removeprefix(SUMMARY_PREFIX).strip()
     if current:
         items.append(current)
     return briefing_id, items
@@ -372,6 +413,40 @@ def _parse_archive_slot_metadata(section_body: str) -> tuple[str | None, list[di
 def _front_matter_datetime(briefing_day: str, timezone_name: str) -> str:
     offset = '+08:00' if timezone_name == 'Asia/Shanghai' else '+00:00'
     return f'{briefing_day}T08:00:00{offset}'
+
+
+def build_item_catalog_rows(briefing_day: str, slot_rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for entry in slot_rows:
+        item = entry['item']
+        heading = str(item.get('heading', ''))
+        title = str(item.get('title') or _item_title_from_heading(heading))
+        tags = list(item.get('tags', []))
+        rows.append(
+            {
+                'briefing_day': briefing_day,
+                'slot': entry['slot'],
+                'slot_label': slot_label(entry['slot']),
+                'briefing_id': entry.get('briefing_id'),
+                'item_id': item.get('item_id'),
+                'title': title,
+                'source': item.get('source'),
+                'url': item.get('url'),
+                'tags': tags,
+                'topic': item.get('topic') or (tags[0] if tags else ''),
+                'summary': item.get('summary', ''),
+                'published': item.get('published', ''),
+            }
+        )
+    return rows
+
+
+def write_item_catalog(path: str | Path, rows: Iterable[dict[str, Any]]) -> None:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open('w', encoding='utf-8') as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False) + '\n')
 
 
 def _shortcode_attr_value(value: str) -> str:
@@ -428,7 +503,7 @@ def render_hugo_content_with_inline_feedback(archive_text: str, briefing_day: st
                 lines.append('')
             continue
 
-        briefing_id, items = _parse_archive_slot_metadata(body)
+        briefing_id, items = parse_archive_slot_metadata(body)
         item_by_heading = {item.get('heading'): item for item in items if item.get('heading')}
         current_item: dict[str, Any] | None = None
         current_item_lines: list[str] = []
@@ -457,12 +532,14 @@ def export_archive_to_hugo(
     output_path: str | Path,
     briefing_day: str,
     timezone_name: str,
+    item_catalog_path: str | Path | None = None,
 ) -> dict[str, Any]:
     archive_text = Path(archive_path).read_text(encoding='utf-8')
     title, sections = parse_archive_sections(archive_text, briefing_day)
 
     slots: list[dict[str, Any]] = []
     feedback_items: list[dict[str, Any]] = []
+    item_catalog_seed: list[dict[str, Any]] = []
     item_ids: list[str] = []
     sources: set[str] = set()
     tags: set[str] = set()
@@ -473,7 +550,7 @@ def export_archive_to_hugo(
         body = sections.get(header, '').strip()
         if header == SETTLING_HEADER:
             continue
-        briefing_id, items = _parse_archive_slot_metadata(body)
+        briefing_id, items = parse_archive_slot_metadata(body)
         slot_name = normalize_slot(header.removeprefix('## ').strip())
         if primary_briefing_id is None and briefing_id:
             primary_briefing_id = briefing_id
@@ -493,6 +570,13 @@ def export_archive_to_hugo(
                     'source': item.get('source'),
                     'url': item.get('url'),
                     'tags': list(item.get('tags', [])),
+                }
+            )
+            item_catalog_seed.append(
+                {
+                    'slot': slot_name,
+                    'briefing_id': briefing_id,
+                    'item': item,
                 }
             )
         slots.append(
@@ -524,6 +608,22 @@ def export_archive_to_hugo(
     front_matter_text = yaml.safe_dump(front_matter, sort_keys=False, allow_unicode=True).strip()
     hugo_content = render_hugo_content_with_inline_feedback(archive_text, briefing_day)
     output.write_text(f'---\n{front_matter_text}\n---\n\n{hugo_content.rstrip()}\n', encoding='utf-8')
+
+    catalog_rows = build_item_catalog_rows(briefing_day, item_catalog_seed)
+    catalog_target = Path(item_catalog_path) if item_catalog_path is not None else None
+    item_catalog_metadata = {
+        'status': 'skipped',
+        'output_path': None,
+        'item_count': len(catalog_rows),
+    }
+    if catalog_target is not None:
+        write_item_catalog(catalog_target, catalog_rows)
+        item_catalog_metadata = {
+            'status': 'updated',
+            'output_path': str(catalog_target),
+            'item_count': len(catalog_rows),
+        }
+
     return {
         'briefing_day': briefing_day,
         'item_count': total_items,
@@ -532,6 +632,7 @@ def export_archive_to_hugo(
         'tags': sorted(tags),
         'feedback_primary_briefing_id': primary_briefing_id,
         'feedback_item_count': len(feedback_items),
+        'item_catalog': item_catalog_metadata,
     }
 
 
@@ -613,6 +714,8 @@ def store_publication_results(manifest_path: str | Path, results: Iterable[Publi
     publication = dict(manifest.get('publication', {}))
     for result in results:
         publication[result.target] = result.to_manifest()
+        if result.target == 'hugo_export' and isinstance(result.details, dict):
+            manifest['item_catalog'] = dict(result.details.get('item_catalog', {}))
     manifest['publication'] = publication
     dump_json(manifest_file, manifest)
     return manifest
@@ -649,6 +752,11 @@ def export_hugo_main(argv: list[str] | None = None) -> int:
                 details={
                     'reason': 'dry_run: manifest 标记为 dry-run，CLI 不生成 Hugo 文件。',
                     'item_count': len(context.collect_result.candidates),
+                    'item_catalog': {
+                        'status': 'dry_run',
+                        'output_path': str(default_item_catalog_path(context)),
+                        'item_count': len(context.collect_result.candidates),
+                    },
                 },
             )
         else:
@@ -657,6 +765,7 @@ def export_hugo_main(argv: list[str] | None = None) -> int:
                 output_path=output_path,
                 briefing_day=briefing_day,
                 timezone_name=timezone_name,
+                item_catalog_path=default_item_catalog_path(context),
             )
             result = PublishResult(
                 target='hugo_export',
@@ -671,11 +780,13 @@ def export_hugo_main(argv: list[str] | None = None) -> int:
         briefing_day = args.briefing_day or archive_path.stem
         timezone_name = args.timezone or 'Asia/Shanghai'
         output_path = Path(args.output) if args.output else Path(DEFAULT_HUGO_CONTENT_DIR) / briefing_day[:4] / f'{briefing_day}.md'
+        item_catalog_path = Path(DEFAULT_ITEM_CATALOG_DIR) / briefing_day[:4] / f'{briefing_day}.jsonl'
         metadata = export_archive_to_hugo(
             archive_path=archive_path,
             output_path=output_path,
             briefing_day=briefing_day,
             timezone_name=timezone_name,
+            item_catalog_path=item_catalog_path,
         )
         result = PublishResult(
             target='hugo_export',

@@ -152,6 +152,7 @@ def _run_sample_briefing(
 def test_export_archive_to_hugo_writes_front_matter_and_slot_metadata(tmp_path):
     archive_path = tmp_path / "archive" / "2026-05-19.md"
     output_path = tmp_path / "site" / "content" / "briefings" / "2026" / "2026-05-19.md"
+    item_catalog_path = tmp_path / "data" / "item_catalog" / "2026" / "2026-05-19.jsonl"
     archive_path.parent.mkdir(parents=True)
     archive_path.write_text(
         "# 新闻雷达｜2026-05-19\n\n"
@@ -183,13 +184,20 @@ def test_export_archive_to_hugo_writes_front_matter_and_slot_metadata(tmp_path):
         output_path=output_path,
         briefing_day="2026-05-19",
         timezone_name="Asia/Shanghai",
+        item_catalog_path=item_catalog_path,
     )
 
     text = output_path.read_text(encoding="utf-8")
     _, front_matter_text, body = text.split("---\n", 2)
     front_matter = yaml.safe_load(front_matter_text)
+    item_catalog_rows = [json.loads(line) for line in item_catalog_path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
     assert metadata["item_count"] == 2
+    assert metadata["item_catalog"] == {
+        "status": "updated",
+        "output_path": str(item_catalog_path),
+        "item_count": 2,
+    }
     assert front_matter["briefing_day"] == "2026-05-19"
     assert front_matter["item_ids"] == ["2026-05-19-08-001", "2026-05-19-13-001"]
     assert front_matter["sources"] == ["Noon Feed", "Working Feed"]
@@ -219,6 +227,36 @@ def test_export_archive_to_hugo_writes_front_matter_and_slot_metadata(tmp_path):
     assert '<section class="news-item-card" data-news-item-id="2026-05-19-08-001">' in body
     assert '{{< item-feedback briefing_id="2026-05-19-08" item_id="2026-05-19-08-001" source="Working Feed" tags="AI Agent,Tooling" >}}' in body
     assert "## 今日沉淀" in body
+    assert item_catalog_rows == [
+        {
+            "briefing_day": "2026-05-19",
+            "slot": "morning",
+            "slot_label": "08:00 早间版",
+            "briefing_id": "2026-05-19-08",
+            "item_id": "2026-05-19-08-001",
+            "title": "Agent copilots ship for developers",
+            "source": "Working Feed",
+            "url": "https://example.com/story",
+            "tags": ["AI Agent", "Tooling"],
+            "topic": "AI Agent",
+            "summary": "A new agent workflow shipped.",
+            "published": "",
+        },
+        {
+            "briefing_day": "2026-05-19",
+            "slot": "noon",
+            "slot_label": "13:00 午间版",
+            "briefing_id": "2026-05-19-13",
+            "item_id": "2026-05-19-13-001",
+            "title": "Robotics retail pilots expand",
+            "source": "Noon Feed",
+            "url": "https://example.com/noon",
+            "tags": ["Robotics"],
+            "topic": "Robotics",
+            "summary": "Pilots expanded.",
+            "published": "",
+        },
+    ]
 
 
 def test_telegram_publisher_safe_local_writes_preview_without_sending(tmp_path):
@@ -304,9 +342,78 @@ def test_export_hugo_cli_updates_manifest_and_uses_manifest_timezone(tmp_path):
 
     manifest = json.loads(Path(result.manifest_path).read_text(encoding="utf-8"))
     output_text = output_path.read_text(encoding="utf-8")
+    item_catalog_path = Path(manifest["item_catalog"]["output_path"])
 
     assert f"output={output_path.resolve()}" in process.stdout
     assert output_path.exists()
     assert manifest["publication"]["hugo_export"]["status"] == "updated"
     assert manifest["publication"]["hugo_export"]["output_path"] == str(output_path)
+    assert item_catalog_path.exists()
     assert "date: '2099-01-03T08:00:00+00:00'" in output_text
+
+
+def test_export_hugo_cli_archive_mode_writes_item_catalog(tmp_path):
+    archive_path = tmp_path / "archive" / "2026-05-19.md"
+    output_path = tmp_path / "manual-hugo.md"
+    item_catalog_path = tmp_path / "data" / "item_catalog" / "2026" / "2026-05-19.jsonl"
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    archive_path.write_text(
+        "# 新闻雷达｜2026-05-19\n\n"
+        "## 08:00 早间版\n\n"
+        "<!-- briefing_id: 2026-05-19-08 -->\n\n"
+        "### 1｜Agent copilots ship for developers\n\n"
+        "- item_id: 2026-05-19-08-001\n"
+        "- source: Working Feed\n"
+        "- url: https://example.com/story\n"
+        "- published: 2026-05-19T00:30:00+00:00\n"
+        "- tags: [AI Agent, Tooling]\n\n"
+        "摘要：A new agent workflow shipped.\n\n"
+        "## 13:00 午间版\n\n"
+        "_本版次暂无候选新闻。_\n\n"
+        "## 20:00 晚间版\n\n"
+        "_本版次暂无候选新闻。_\n\n"
+        "## 今日沉淀\n\n"
+        "- 趋势：Agent workflow 更成熟\n",
+        encoding="utf-8",
+    )
+
+    process = subprocess.run(
+        [
+            sys.executable,
+            str(EXPORT_HUGO_SCRIPT),
+            "--archive",
+            str(archive_path),
+            "--briefing-day",
+            "2026-05-19",
+            "--timezone",
+            "UTC",
+            "--output",
+            str(output_path),
+        ],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=True,
+        env={**os.environ, "PYTHONPATH": str(ROOT)},
+    )
+
+    rows = [json.loads(line) for line in item_catalog_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert f"output={output_path.resolve()}" in process.stdout
+    assert output_path.exists()
+    assert item_catalog_path.exists()
+    assert rows == [
+        {
+            "briefing_day": "2026-05-19",
+            "slot": "morning",
+            "slot_label": "08:00 早间版",
+            "briefing_id": "2026-05-19-08",
+            "item_id": "2026-05-19-08-001",
+            "title": "Agent copilots ship for developers",
+            "source": "Working Feed",
+            "url": "https://example.com/story",
+            "tags": ["AI Agent", "Tooling"],
+            "topic": "AI Agent",
+            "summary": "A new agent workflow shipped.",
+            "published": "2026-05-19T00:30:00+00:00",
+        }
+    ]

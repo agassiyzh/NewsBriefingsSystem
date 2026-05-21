@@ -87,6 +87,8 @@ def test_run_briefing_dry_run_writes_outputs_but_skips_archive(tmp_path):
     assert manifest["publication"]["telegram"]["dry_run"] is True
     assert manifest["publication"]["markdown_archive"]["status"] == "dry_run"
     assert manifest["publication"]["hugo_export"]["status"] == "dry_run"
+    assert manifest["item_catalog"]["status"] == "dry_run"
+    assert manifest["item_catalog"]["item_count"] == 1
     assert Path(result.jsonl_output).exists()
     assert Path(result.markdown_output).exists()
     assert len(jsonl_lines) == 1
@@ -95,6 +97,7 @@ def test_run_briefing_dry_run_writes_outputs_but_skips_archive(tmp_path):
     assert not archive_path.exists()
     assert not preview_path.exists()
     assert not hugo_output.exists()
+    assert not Path(manifest["item_catalog"]["output_path"]).exists()
 
 
 def test_run_briefing_non_dry_run_updates_slot_without_overwriting_other_sections(tmp_path):
@@ -131,11 +134,15 @@ def test_run_briefing_non_dry_run_updates_slot_without_overwriting_other_section
     archive_text = archive_path.read_text(encoding="utf-8")
     hugo_text = hugo_output.read_text(encoding="utf-8")
     preview_text = preview_path.read_text(encoding="utf-8")
+    item_catalog_path = Path(manifest["item_catalog"]["output_path"])
+    item_catalog_rows = [json.loads(line) for line in item_catalog_path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
     assert manifest["dry_run"] is False
     assert manifest["publication"]["markdown_archive"]["status"] == "updated"
     assert manifest["publication"]["telegram"]["status"] == "dry_run"
     assert manifest["publication"]["hugo_export"]["status"] == "updated"
+    assert manifest["item_catalog"]["status"] == "updated"
+    assert manifest["item_catalog"]["item_count"] == 1
     assert "Agent copilots ship for developers" in archive_text
     assert "旧早间内容" not in archive_text
     assert "保留的午间内容" in archive_text
@@ -145,6 +152,23 @@ def test_run_briefing_non_dry_run_updates_slot_without_overwriting_other_section
     assert hugo_text.startswith("---\n")
     assert "briefing_day: '2026-05-19'" in hugo_text
     assert "- item_id: 2026-05-19-08-001" in hugo_text
+    assert item_catalog_path.exists()
+    assert item_catalog_rows == [
+        {
+            "briefing_day": "2026-05-19",
+            "slot": "morning",
+            "slot_label": "08:00 早间版",
+            "briefing_id": "2026-05-19-08",
+            "item_id": "2026-05-19-08-001",
+            "title": "Agent copilots ship for developers",
+            "source": "Working Feed",
+            "url": "https://example.com/story",
+            "tags": ["AI Agent"],
+            "topic": "AI Agent",
+            "summary": "A new agent workflow shipped.",
+            "published": "2026-05-19T00:30:00+00:00",
+        }
+    ]
 
 
 def test_run_briefing_uses_config_timezone_for_briefing_id(tmp_path):

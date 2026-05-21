@@ -1,0 +1,21 @@
+{
+  "month": "YYYY-MM",
+  "review_status": "pending_review",
+  "reviewed_by": "",
+  "reviewed_at": "",
+  "summary": "Only stable, cross-month, declarative editorial preferences may be approved for Honcho writes.",
+  "preferences": [
+    {
+      "id": "pref-YYYY-MM-example-topic",
+      "candidate_preference": "Readers show sustained interest in a stable topic or editorial angle across multiple months.",
+      "evidence_summary": "Summarize only aggregated evidence; do not include raw event identifiers, single-item anecdotes, or PII.",
+      "confidence": "medium",
+      "editor_decision": "needs_revision",
+      "preference_type": "interest",
+      "action": "add",
+      "stable_preference": true,
+      "stability_window_months": 3,
+      "notes": "Analyst proposes; Editor approves or rejects. Repo should not perform routine direct Honcho writes during normal runs."
+    }
+  ]
+}

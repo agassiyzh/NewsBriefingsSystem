@@ -151,9 +151,41 @@ test('GET /r records click events and redirects to safe targets', async () => {
   assert.equal(storedEvent.target_url, 'https://example.com/story');
   assert.equal(storedEvent.metadata_json, null);
   assert.match(storedEvent.id, /^evt_/);
-  assert.match(storedEvent.idempotency_key, /^[0-9a-f]{8}$/);
+  assert.match(storedEvent.idempotency_key, /^[0-9a-f]{32}$/);
   assert.match(storedEvent.time_bucket, /^\d{12}$/);
   assert.match(storedEvent.created_at, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test('GET /r records independent clicks separately when no explicit retry key is provided', async () => {
+  const env = createEnv();
+  const request = new Request(
+    'http://worker.local/r?u=https%3A%2F%2Fexample.com%2Fstory&briefing_id=2026-05-19-08&item_id=2026-05-19-08-001&channel=site',
+  );
+
+  const first = await handleRequest(request.clone(), env);
+  const second = await handleRequest(request.clone(), env);
+
+  assert.equal(first.status, 302);
+  assert.equal(second.status, 302);
+  assert.equal(env.FEEDBACK_STORE.size(), 2);
+
+  const [firstEvent, secondEvent] = env.FEEDBACK_STORE.all();
+  assert.notEqual(firstEvent.idempotency_key, secondEvent.idempotency_key);
+});
+
+test('GET /r deduplicates retries when an explicit redirect key is provided', async () => {
+  const env = createEnv();
+  const request = new Request(
+    'http://worker.local/r?u=https%3A%2F%2Fexample.com%2Fstory&briefing_id=2026-05-19-08&item_id=2026-05-19-08-001&channel=site&k=retry-click-001',
+  );
+
+  const first = await handleRequest(request.clone(), env);
+  const second = await handleRequest(request.clone(), env);
+
+  assert.equal(first.status, 302);
+  assert.equal(second.status, 302);
+  assert.equal(env.FEEDBACK_STORE.size(), 1);
+  assert.equal(env.FEEDBACK_STORE.all()[0].idempotency_key, 'retry-click-001');
 });
 
 test('GET /r rejects click tracking links without an item_id', async () => {
