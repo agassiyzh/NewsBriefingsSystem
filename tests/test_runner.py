@@ -165,8 +165,10 @@ def test_run_briefing_non_dry_run_updates_slot_without_overwriting_other_section
             "url": "https://example.com/story",
             "tags": ["AI Agent"],
             "topic": "AI Agent",
-            "summary": "A new agent workflow shipped.",
+            "summary": "Agent copilots ship for developers：聚焦A new agent workflow shipped。",
             "published": "2026-05-19T00:30:00+00:00",
+            "why_relevant": "这条更新与代理工作流、开发工具和项目灵感直接相关，适合继续跟进。",
+            "action_or_observe": "行动：跟进Agent copilots ship for developers的产品页、源码或发布说明，判断是否值得纳入现有工具链。",
         }
     ]
 

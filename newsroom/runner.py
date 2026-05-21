@@ -22,6 +22,7 @@ from .config import (
     resolve_runtime,
     resolve_system_dir,
 )
+from .editor import compose_briefing
 from .ids import build_briefing_id, normalize_slot, slot_label
 from .publisher import (
     HugoExportPublisher,
@@ -79,6 +80,7 @@ def run_briefing(
     path_cfg = merged_paths(newsroom_config)
     candidates_dir = resolve_path(system_dir, path_cfg['candidates_dir'])
     contexts_dir = resolve_path(system_dir, path_cfg['contexts_dir'])
+    briefings_dir = resolve_path(system_dir, path_cfg['briefings_dir'])
     runs_dir = resolve_path(system_dir, path_cfg['runs_dir'])
     logs_dir = resolve_path(system_dir, path_cfg['logs_dir'])
     log_path = logs_dir / f'{briefing_day}.log'
@@ -102,6 +104,15 @@ def run_briefing(
     write_jsonl(jsonl_output, result.candidates)
     write_markdown(markdown_output, result.markdown)
 
+    curated_briefing = compose_briefing(
+        result,
+        slot=normalized_slot,
+        generated_at=runtime.astimezone(UTC).isoformat(timespec='seconds'),
+        default_channel=str(newsroom_config.get('feedback', {}).get('default_channel', 'unknown')),
+    )
+    curated_output = briefings_dir / f'{resolved_briefing_id}.json'
+    dump_json(curated_output, curated_briefing.to_dict())
+
     publication_context = build_publication_context(
         briefing_id=resolved_briefing_id,
         slot=normalized_slot,
@@ -111,6 +122,7 @@ def run_briefing(
         system_dir=system_dir,
         path_config=path_cfg,
         publication_config=newsroom_config.get('publication', {}),
+        curated_briefing=curated_briefing,
         dry_run=dry_run,
     )
 
@@ -133,7 +145,7 @@ def run_briefing(
                 'item_catalog': {
                     'status': 'dry_run',
                     'output_path': str(default_item_catalog_path(publication_context)),
-                    'item_count': len(result.candidates),
+                    'item_count': curated_briefing.curated_item_count,
                 },
             },
         )
@@ -147,7 +159,7 @@ def run_briefing(
         item_catalog_status = {
             'status': 'dry_run' if dry_run else 'skipped',
             'output_path': str(default_item_catalog_path(publication_context)),
-            'item_count': len(result.candidates),
+            'item_count': curated_briefing.curated_item_count,
         }
 
     manifest = {
@@ -161,8 +173,11 @@ def run_briefing(
         'archive_path': str(archive_path.resolve()),
         'jsonl_output': str(jsonl_output),
         'markdown_output': str(markdown_output),
+        'curated_output': str(curated_output),
         'log_path': str(log_path),
         'candidate_count': len(result.candidates),
+        'curated_item_count': curated_briefing.curated_item_count,
+        'editor_version': curated_briefing.editor_version,
         'error_count': result.error_count,
         'errors': result.errors,
         'sources_path': str(Path(sources_path).resolve()),

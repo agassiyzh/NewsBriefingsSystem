@@ -11,6 +11,7 @@ import yaml
 
 from .collector import CollectResult
 from .config import dump_json, load_yaml, resolve_path
+from .editor import CuratedBriefing, CuratedItem, load_curated_briefing
 from .ids import normalize_slot, slot_label
 
 SETTLING_HEADER = '## 今日沉淀'
@@ -25,6 +26,10 @@ URL_RE = re.compile(r'-\s*url:\s*(.+)')
 PUBLISHED_RE = re.compile(r'-\s*published:\s*(.+)')
 TAGS_RE = re.compile(r'-\s*tags:\s*\[(.*)\]')
 TOPIC_RE = re.compile(r'-\s*topic:\s*(.+)')
+WHY_RELEVANT_RE = re.compile(r'-\s*why_relevant:\s*(.+)')
+ACTION_OR_OBSERVE_RE = re.compile(r'-\s*action_or_observe:\s*(.+)')
+SELECTION_REASON_RE = re.compile(r'-\s*selection_reason:\s*(.+)')
+CHANNEL_RE = re.compile(r'-\s*channel:\s*(.+)')
 STATUS_RE = re.compile(r'-\s*status:\s*(.+)')
 ERROR_RE = re.compile(r'-\s*error:\s*(.+)')
 ITEM_HEADING_RE = re.compile(r'###\s+(.+)')
@@ -42,6 +47,7 @@ class PublicationContext:
     system_dir: Path
     path_config: dict[str, str]
     publication_config: dict[str, Any]
+    curated_briefing: CuratedBriefing | None = None
     dry_run: bool = True
 
 
@@ -90,6 +96,7 @@ class MarkdownArchivePublisher:
             briefing_day=context.briefing_day,
             slot=context.slot,
             result=context.collect_result,
+            briefing=context.curated_briefing,
         )
         return PublishResult(
             target=self.target,
@@ -98,6 +105,9 @@ class MarkdownArchivePublisher:
             details={
                 'briefing_id': context.briefing_id,
                 'candidate_count': len(context.collect_result.candidates),
+                'curated_item_count': (
+                    context.curated_briefing.curated_item_count if context.curated_briefing is not None else len(context.collect_result.candidates)
+                ),
             },
         )
 
@@ -192,6 +202,11 @@ class HugoExportPublisher:
         output_path = self.output_path or default_hugo_output_path(context)
         item_catalog_path = default_item_catalog_path(context)
         if context.dry_run:
+            item_count = (
+                context.curated_briefing.curated_item_count
+                if context.curated_briefing is not None
+                else len(context.collect_result.candidates)
+            )
             return PublishResult(
                 target=self.target,
                 status='dry_run',
@@ -199,22 +214,32 @@ class HugoExportPublisher:
                 dry_run=True,
                 details={
                     'reason': 'dry_run: 保持 Phase 1 兼容，当前不生成 Hugo 导出文件。',
-                    'item_count': len(context.collect_result.candidates),
+                    'item_count': item_count,
                     'item_catalog': {
                         'status': 'dry_run',
                         'output_path': str(item_catalog_path),
-                        'item_count': len(context.collect_result.candidates),
+                        'item_count': item_count,
                     },
                 },
             )
 
-        metadata = export_archive_to_hugo(
-            archive_path=context.archive_path,
-            output_path=output_path,
-            briefing_day=context.briefing_day,
-            timezone_name=context.timezone_name,
-            item_catalog_path=item_catalog_path,
-        )
+        if context.curated_briefing is not None:
+            metadata = export_curated_briefing_to_hugo(
+                briefing=context.curated_briefing,
+                output_path=output_path,
+                archive_path=context.archive_path,
+                briefing_day=context.briefing_day,
+                timezone_name=context.timezone_name,
+                item_catalog_path=item_catalog_path,
+            )
+        else:
+            metadata = export_archive_to_hugo(
+                archive_path=context.archive_path,
+                output_path=output_path,
+                briefing_day=context.briefing_day,
+                timezone_name=context.timezone_name,
+                item_catalog_path=item_catalog_path,
+            )
         return PublishResult(
             target=self.target,
             status='updated',
@@ -235,8 +260,54 @@ def ordered_archive_headers() -> list[str]:
     return [slot_header('morning'), slot_header('noon'), slot_header('evening'), SETTLING_HEADER]
 
 
-def render_archive_slot(result: CollectResult) -> str:
-    lines = [f'<!-- briefing_id: {result.briefing_id} -->', '']
+def render_archive_slot(result: CollectResult, briefing: CuratedBriefing | None = None) -> str:
+    briefing_id = briefing.briefing_id if briefing is not None else result.briefing_id
+    lines = [f'<!-- briefing_id: {briefing_id} -->', '']
+    if briefing is not None:
+        if not briefing.items:
+            lines.append('_本版次暂无精选新闻。_')
+            return '\n'.join(lines).rstrip()
+
+        if briefing.today_signals:
+            lines.append('今日信号：')
+            for signal in briefing.today_signals:
+                lines.append(f'- {signal}')
+            lines.append('')
+
+        for item in briefing.items:
+            lines.append(f"### {item.rank}｜{item.title}")
+            lines.append('')
+            lines.append(f'- item_id: {item.item_id}')
+            lines.append(f'- source: {item.source}')
+            lines.append(f'- url: {item.url}')
+            if item.published:
+                lines.append(f'- published: {item.published}')
+            if item.tags:
+                lines.append(f"- tags: [{', '.join(item.tags)}]")
+            if item.topic:
+                lines.append(f'- topic: {item.topic}')
+            lines.append(f'- why_relevant: {item.why_relevant}')
+            lines.append(f'- action_or_observe: {item.action_or_observe}')
+            lines.append(f'- selection_reason: {item.selection_reason}')
+            channel = str(item.feedback_metadata.get('channel', '') or '')
+            if channel:
+                lines.append(f'- channel: {channel}')
+            if item.rewritten_summary:
+                lines.append('')
+                lines.append(f'摘要：{item.rewritten_summary}')
+            tags_param = ','.join(item.tags)
+            lines.append('')
+            lines.append(
+                '{{< item-feedback '
+                f'briefing_id="{item.briefing_id}" '
+                f'item_id="{item.item_id}" '
+                f'source="{item.source}" '
+                f'tags="{tags_param}" '
+                '>}}'
+            )
+            lines.append('')
+        return '\n'.join(lines).rstrip()
+
     if not result.candidates:
         lines.append('_本版次暂无候选新闻。_')
         return '\n'.join(lines).rstrip()
@@ -307,10 +378,17 @@ def compose_archive_text(briefing_day: str, sections: dict[str, str], title: str
     return '\n'.join(lines).rstrip() + '\n'
 
 
-def update_archive_slot(archive_path: Path, *, briefing_day: str, slot: str, result: CollectResult) -> None:
+def update_archive_slot(
+    archive_path: Path,
+    *,
+    briefing_day: str,
+    slot: str,
+    result: CollectResult,
+    briefing: CuratedBriefing | None = None,
+) -> None:
     existing_text = archive_path.read_text(encoding='utf-8') if archive_path.exists() else ''
     title, sections = parse_archive_sections(existing_text, briefing_day)
-    sections[slot_header(slot)] = render_archive_slot(result)
+    sections[slot_header(slot)] = render_archive_slot(result, briefing)
     archive_path.parent.mkdir(parents=True, exist_ok=True)
     archive_path.write_text(compose_archive_text(briefing_day, sections, title=title), encoding='utf-8')
 
@@ -331,6 +409,33 @@ def default_item_catalog_path(context: PublicationContext) -> Path:
 
 
 def render_telegram_message(context: PublicationContext) -> str:
+    if context.curated_briefing is not None:
+        briefing = context.curated_briefing
+        lines = [f'新闻雷达｜{context.briefing_day} {slot_label(context.slot)}', '']
+        if not briefing.items:
+            lines.append('本版次暂无精选新闻。')
+            return '\n'.join(lines)
+
+        if briefing.today_signals:
+            lines.append('今日信号：')
+            for signal in briefing.today_signals:
+                lines.append(f'- {signal}')
+            lines.append('')
+
+        for item in briefing.items:
+            lines.append(f'{item.rank}｜{item.title}')
+            if item.rewritten_summary:
+                lines.append(f'极简摘要：{item.rewritten_summary}')
+            if item.why_relevant:
+                lines.append(f'为什么值得看：{item.why_relevant}')
+            if item.action_or_observe:
+                lines.append(f'动作建议：{item.action_or_observe}')
+            if item.tags:
+                lines.append(f"标签：{', '.join(item.tags)}")
+            lines.append(f'链接：{item.url}')
+            lines.append('')
+        return '\n'.join(lines).strip()
+
     lines = [f'新闻雷达｜{context.briefing_day} {slot_label(context.slot)}', '']
     if not context.collect_result.candidates:
         lines.append('本版次暂无候选新闻。')
@@ -397,6 +502,18 @@ def parse_archive_slot_metadata(section_body: str) -> tuple[str | None, list[dic
         if match := TOPIC_RE.match(line):
             current['topic'] = match.group(1).strip()
             continue
+        if match := WHY_RELEVANT_RE.match(line):
+            current['why_relevant'] = match.group(1).strip()
+            continue
+        if match := ACTION_OR_OBSERVE_RE.match(line):
+            current['action_or_observe'] = match.group(1).strip()
+            continue
+        if match := SELECTION_REASON_RE.match(line):
+            current['selection_reason'] = match.group(1).strip()
+            continue
+        if match := CHANNEL_RE.match(line):
+            current['channel'] = match.group(1).strip()
+            continue
         if match := STATUS_RE.match(line):
             current['status'] = match.group(1).strip()
             continue
@@ -422,22 +539,25 @@ def build_item_catalog_rows(briefing_day: str, slot_rows: Iterable[dict[str, Any
         heading = str(item.get('heading', ''))
         title = str(item.get('title') or _item_title_from_heading(heading))
         tags = list(item.get('tags', []))
-        rows.append(
-            {
-                'briefing_day': briefing_day,
-                'slot': entry['slot'],
-                'slot_label': slot_label(entry['slot']),
-                'briefing_id': entry.get('briefing_id'),
-                'item_id': item.get('item_id'),
-                'title': title,
-                'source': item.get('source'),
-                'url': item.get('url'),
-                'tags': tags,
-                'topic': item.get('topic') or (tags[0] if tags else ''),
-                'summary': item.get('summary', ''),
-                'published': item.get('published', ''),
-            }
-        )
+        row = {
+            'briefing_day': briefing_day,
+            'slot': entry['slot'],
+            'slot_label': slot_label(entry['slot']),
+            'briefing_id': entry.get('briefing_id'),
+            'item_id': item.get('item_id'),
+            'title': title,
+            'source': item.get('source'),
+            'url': item.get('url'),
+            'tags': tags,
+            'topic': item.get('topic') or (tags[0] if tags else ''),
+            'summary': item.get('summary', ''),
+            'published': item.get('published', ''),
+        }
+        if 'why_relevant' in item:
+            row['why_relevant'] = item.get('why_relevant', '')
+        if 'action_or_observe' in item:
+            row['action_or_observe'] = item.get('action_or_observe', '')
+        rows.append(row)
     return rows
 
 
@@ -482,6 +602,19 @@ def _render_news_item_card(item_lines: list[str], item: dict[str, Any] | None, b
     return rendered
 
 
+def _display_line(raw_line: str) -> str | None:
+    stripped = raw_line.strip()
+    if match := WHY_RELEVANT_RE.match(stripped):
+        return f'为什么相关：{match.group(1).strip()}'
+    if match := ACTION_OR_OBSERVE_RE.match(stripped):
+        return f'行动建议：{match.group(1).strip()}'
+    if match := SELECTION_REASON_RE.match(stripped):
+        return f'入选原因：{match.group(1).strip()}'
+    if CHANNEL_RE.match(stripped):
+        return None
+    return raw_line
+
+
 def render_hugo_content_with_inline_feedback(archive_text: str, briefing_day: str) -> str:
     """Render archive Markdown with feedback shortcodes after each news item.
 
@@ -517,13 +650,133 @@ def render_hugo_content_with_inline_feedback(archive_text: str, briefing_day: st
             if current_item is not None:
                 if raw_line.strip().startswith('{{< item-feedback'):
                     continue
-                current_item_lines.append(raw_line)
+                rendered_line = _display_line(raw_line)
+                if rendered_line is not None:
+                    current_item_lines.append(rendered_line)
                 continue
-            lines.append(raw_line)
+            rendered_line = _display_line(raw_line)
+            if rendered_line is not None:
+                lines.append(rendered_line)
 
         lines.extend(_render_news_item_card(current_item_lines, current_item, briefing_id))
         lines.append('')
     return '\n'.join(lines).rstrip() + '\n'
+
+
+def _curated_slot_rows(briefing: CuratedBriefing) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for item in briefing.items:
+        rows.append(
+            {
+                'slot': briefing.slot,
+                'briefing_id': briefing.briefing_id,
+                'item': {
+                    'heading': f'{item.rank}｜{item.title}',
+                    'title': item.title,
+                    'item_id': item.item_id,
+                    'source': item.source,
+                    'url': item.url,
+                    'published': item.published,
+                    'tags': list(item.tags),
+                    'topic': item.topic,
+                    'summary': item.rewritten_summary,
+                    'why_relevant': item.why_relevant,
+                    'action_or_observe': item.action_or_observe,
+                    'selection_reason': item.selection_reason,
+                    'channel': item.feedback_metadata.get('channel', ''),
+                },
+            }
+        )
+    return rows
+
+
+def _compose_curated_archive_text(briefing: CuratedBriefing, briefing_day: str) -> str:
+    return compose_archive_text(
+        briefing_day,
+        {
+            slot_header(briefing.slot): render_archive_slot(
+                CollectResult(
+                    briefing_id=briefing.briefing_id,
+                    collected_at=briefing.generated_at,
+                    candidates=[],
+                    markdown='',
+                    error_count=0,
+                    errors=[],
+                ),
+                briefing,
+            )
+        },
+    )
+
+
+
+def export_curated_briefing_to_hugo(
+    *,
+    briefing: CuratedBriefing,
+    output_path: str | Path,
+    archive_path: str | Path,
+    briefing_day: str,
+    timezone_name: str,
+    item_catalog_path: str | Path | None = None,
+) -> dict[str, Any]:
+    archive = Path(archive_path)
+    archive_text = _compose_curated_archive_text(briefing, briefing_day)
+    if not archive.exists():
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        archive.write_text(archive_text, encoding='utf-8')
+    front_matter = {
+        'title': archive_title(briefing_day).removeprefix('# ').strip(),
+        'date': _front_matter_datetime(briefing_day, timezone_name),
+        'briefing_day': briefing_day,
+        'timezone': timezone_name,
+        'item_count': briefing.curated_item_count,
+        'item_ids': [item.item_id for item in briefing.items],
+        'sources': sorted({item.source for item in briefing.items if item.source}),
+        'tags': sorted({tag for item in briefing.items for tag in item.tags}),
+        'feedback_primary_briefing_id': briefing.briefing_id,
+        'feedback_items': [dict(item) for item in briefing.feedback_items],
+        'slots': [
+            {
+                'slot': briefing.slot,
+                'label': briefing.slot_label,
+                'briefing_id': briefing.briefing_id,
+                'item_count': briefing.curated_item_count,
+            }
+        ],
+        'draft': False,
+    }
+
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    front_matter_text = yaml.safe_dump(front_matter, sort_keys=False, allow_unicode=True).strip()
+    hugo_content = render_hugo_content_with_inline_feedback(archive_text, briefing_day)
+    output.write_text(f'---\n{front_matter_text}\n---\n\n{hugo_content.rstrip()}\n', encoding='utf-8')
+
+    catalog_rows = build_item_catalog_rows(briefing_day, _curated_slot_rows(briefing))
+    catalog_target = Path(item_catalog_path) if item_catalog_path is not None else None
+    item_catalog_metadata = {
+        'status': 'skipped',
+        'output_path': None,
+        'item_count': len(catalog_rows),
+    }
+    if catalog_target is not None:
+        write_item_catalog(catalog_target, catalog_rows)
+        item_catalog_metadata = {
+            'status': 'updated',
+            'output_path': str(catalog_target),
+            'item_count': len(catalog_rows),
+        }
+
+    return {
+        'briefing_day': briefing_day,
+        'item_count': briefing.curated_item_count,
+        'item_ids': [item.item_id for item in briefing.items],
+        'sources': sorted({item.source for item in briefing.items if item.source}),
+        'tags': sorted({tag for item in briefing.items for tag in item.tags}),
+        'feedback_primary_briefing_id': briefing.briefing_id,
+        'feedback_item_count': len(briefing.feedback_items),
+        'item_catalog': item_catalog_metadata,
+    }
 
 
 def export_archive_to_hugo(
@@ -646,6 +899,7 @@ def build_publication_context(
     system_dir: str | Path,
     path_config: dict[str, str],
     publication_config: dict[str, Any],
+    curated_briefing: CuratedBriefing | None = None,
     dry_run: bool,
 ) -> PublicationContext:
     briefing_day = '-'.join(briefing_id.split('-')[:3])
@@ -659,6 +913,7 @@ def build_publication_context(
         system_dir=Path(system_dir),
         path_config=path_config,
         publication_config=publication_config,
+        curated_briefing=curated_briefing,
         dry_run=dry_run,
     )
 
@@ -692,6 +947,9 @@ def load_context_from_manifest(manifest_path: str | Path) -> tuple[PublicationCo
     newsroom_config = load_yaml(manifest['newsroom_config_path'])
     system_dir = newsroom_config.get('system', {}).get('system_dir') or Path(manifest['newsroom_config_path']).resolve().parents[1]
     collect_result = collect_result_from_jsonl(manifest['jsonl_output'], briefing_id=manifest['briefing_id'])
+    curated_briefing = None
+    if manifest.get('curated_output'):
+        curated_briefing = load_curated_briefing(json.loads(Path(manifest['curated_output']).read_text(encoding='utf-8')))
     path_config = dict(newsroom_config.get('paths', {}))
     publication_config = dict(newsroom_config.get('publication', {}))
     context = build_publication_context(
@@ -703,6 +961,7 @@ def load_context_from_manifest(manifest_path: str | Path) -> tuple[PublicationCo
         system_dir=system_dir,
         path_config=path_config,
         publication_config=publication_config,
+        curated_briefing=curated_briefing,
         dry_run=bool(manifest.get('dry_run', False)),
     )
     return context, manifest

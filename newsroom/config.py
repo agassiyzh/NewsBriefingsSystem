@@ -11,6 +11,7 @@ import yaml
 DEFAULT_PATHS = {
     'candidates_dir': 'data/candidates',
     'contexts_dir': 'data/contexts',
+    'briefings_dir': 'data/briefings',
     'runs_dir': 'data/runs',
     'logs_dir': 'logs',
     'telegram_previews_dir': 'data/telegram',
