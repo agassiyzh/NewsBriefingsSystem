@@ -1,0 +1,799 @@
+{
+  "month": "2026-05",
+  "generated_at": "2026-05-21T02:27:58+00:00",
+  "summary": {
+    "dry_run": true,
+    "timezone": "Asia/Shanghai",
+    "catalog_items": 3,
+    "event_rows": 46,
+    "briefings": 3,
+    "editor_brief_count": 2
+  },
+  "inputs": {
+    "events": [
+      "dry-run://synthetic-events"
+    ],
+    "catalog": [
+      "dry-run://synthetic-catalog"
+    ]
+  },
+  "thresholds": {
+    "topic": {
+      "display": {
+        "items": 2,
+        "impressions": 6,
+        "read_sessions": 3
+      },
+      "decision": {
+        "items": 3,
+        "impressions": 12,
+        "read_sessions": 6
+      }
+    },
+    "source": {
+      "display": {
+        "items": 2,
+        "impressions": 4,
+        "read_sessions": 2
+      },
+      "decision": {
+        "items": 3,
+        "impressions": 8,
+        "read_sessions": 4
+      }
+    },
+    "tag": {
+      "display": {
+        "items": 2,
+        "impressions": 6,
+        "read_sessions": 3
+      },
+      "decision": {
+        "items": 3,
+        "impressions": 12,
+        "read_sessions": 6
+      }
+    },
+    "item": {
+      "display": {
+        "items": 1,
+        "impressions": 2,
+        "read_sessions": 1
+      },
+      "decision": {
+        "items": 1,
+        "impressions": 4,
+        "read_sessions": 2
+      }
+    }
+  },
+  "monthly_baseline": {
+    "click_rate": 0.6875,
+    "like_rate": 0.4375,
+    "negative_feedback_rate": 0.125,
+    "deep_dive_rate": 0.4375
+  },
+  "data_quality": {
+    "warnings": [
+      "存在 inferred deep_dive / impression 缺失等噪声信号，请在 Editor 审核时复核。"
+    ],
+    "anonymous_id_missing_rate": 0.0,
+    "uncatalogued_event_count": 0,
+    "event_types_seen": [
+      "click",
+      "deep_dive",
+      "dislike",
+      "dwell",
+      "impression",
+      "like"
+    ]
+  },
+  "dimensions": {
+    "item": [
+      {
+        "value": "2026-05-10-08-001",
+        "label": "Agent workflow copilots land in customer support",
+        "briefing_id": "2026-05-10-08",
+        "source": "Example Feed",
+        "topic": "AI Agent",
+        "tags": [
+          "AI Agent",
+          "Tooling"
+        ],
+        "summary": "A practical agent workflow reaches production customer support teams.",
+        "why_relevant": "Shows near-term productized agent workflows instead of vague hype.",
+        "channels": [
+          "site"
+        ],
+        "sample_status": "decision_ready",
+        "confidence": "medium",
+        "noise_flags": [
+          "inferred_deep_dive_from_dwell"
+        ],
+        "anonymous_missing_rate": 0.0,
+        "items_published": 1,
+        "impressions": 6,
+        "clicks": 5,
+        "likes": 4,
+        "dislikes": 0,
+        "deep_dives": 4,
+        "dwell_events": 4,
+        "read_sessions": 4,
+        "avg_dwell_seconds": 150.0,
+        "median_dwell_seconds": 150.0,
+        "p75_dwell_seconds": 150.0,
+        "click_rate": 0.8333,
+        "like_rate": 0.6667,
+        "dislike_rate": 0.0,
+        "deep_dive_rate": 0.6667,
+        "dwell_rate": 0.6667,
+        "negative_feedback_rate": 0.0,
+        "feedback_sentiment": 1.0,
+        "rate_basis": "impressions"
+      },
+      {
+        "value": "2026-05-10-13-001",
+        "label": "Developer tooling teams ship eval pipelines for agents",
+        "briefing_id": "2026-05-10-13",
+        "source": "Example Labs",
+        "topic": "AI Agent",
+        "tags": [
+          "AI Agent",
+          "Evaluation"
+        ],
+        "summary": "Tooling vendors are packaging eval loops for agent reliability.",
+        "why_relevant": "Connects to durable workflow improvements and shipping discipline.",
+        "channels": [
+          "site"
+        ],
+        "sample_status": "decision_ready",
+        "confidence": "medium",
+        "noise_flags": [
+          "inferred_deep_dive_from_dwell"
+        ],
+        "anonymous_missing_rate": 0.0,
+        "items_published": 1,
+        "impressions": 6,
+        "clicks": 4,
+        "likes": 3,
+        "dislikes": 0,
+        "deep_dives": 3,
+        "dwell_events": 3,
+        "read_sessions": 3,
+        "avg_dwell_seconds": 125.0,
+        "median_dwell_seconds": 125.0,
+        "p75_dwell_seconds": 125.0,
+        "click_rate": 0.6667,
+        "like_rate": 0.5,
+        "dislike_rate": 0.0,
+        "deep_dive_rate": 0.5,
+        "dwell_rate": 0.5,
+        "negative_feedback_rate": 0.0,
+        "feedback_sentiment": 1.0,
+        "rate_basis": "impressions"
+      },
+      {
+        "value": "2026-05-12-08-001",
+        "label": "Retail robotics pilots expand but stall at checkout UX",
+        "briefing_id": "2026-05-12-08",
+        "source": "Example Robotics",
+        "topic": "Robotics",
+        "tags": [
+          "Robotics",
+          "Retail"
+        ],
+        "summary": "More deployments appear, but users still hit operational friction.",
+        "why_relevant": "Useful signal for embodied AI commercialization, but weaker immediate actionability.",
+        "channels": [
+          "site"
+        ],
+        "sample_status": "decision_ready",
+        "confidence": "high",
+        "noise_flags": [],
+        "anonymous_missing_rate": 0.0,
+        "items_published": 1,
+        "impressions": 4,
+        "clicks": 2,
+        "likes": 0,
+        "dislikes": 2,
+        "deep_dives": 0,
+        "dwell_events": 2,
+        "read_sessions": 2,
+        "avg_dwell_seconds": 9.0,
+        "median_dwell_seconds": 9.0,
+        "p75_dwell_seconds": 9.0,
+        "click_rate": 0.5,
+        "like_rate": 0.0,
+        "dislike_rate": 0.5,
+        "deep_dive_rate": 0.0,
+        "dwell_rate": 0.5,
+        "negative_feedback_rate": 0.5,
+        "feedback_sentiment": -1.0,
+        "rate_basis": "impressions"
+      }
+    ],
+    "topic": [
+      {
+        "value": "AI Agent",
+        "label": "AI Agent",
+        "items_published": 2,
+        "impressions": 12,
+        "clicks": 9,
+        "likes": 7,
+        "dislikes": 0,
+        "deep_dives": 7,
+        "dwell_events": 7,
+        "read_sessions": 7,
+        "avg_dwell_seconds": 139.3,
+        "median_dwell_seconds": 150.0,
+        "p75_dwell_seconds": 150.0,
+        "click_rate": 0.75,
+        "like_rate": 0.5833,
+        "dislike_rate": 0.0,
+        "deep_dive_rate": 0.5833,
+        "dwell_rate": 0.5833,
+        "negative_feedback_rate": 0.0,
+        "feedback_sentiment": 1.0,
+        "rate_basis": "impressions",
+        "channels": [
+          "site"
+        ],
+        "sample_status": "observe",
+        "confidence": "medium",
+        "noise_flags": [
+          "inferred_deep_dive_from_dwell"
+        ],
+        "anonymous_missing_rate": 0.0,
+        "briefing_ids": [
+          "2026-05-10-08",
+          "2026-05-10-13"
+        ],
+        "item_ids": [
+          "2026-05-10-08-001",
+          "2026-05-10-13-001"
+        ],
+        "sources": [
+          "Example Feed",
+          "Example Labs"
+        ],
+        "topics": [
+          "AI Agent"
+        ],
+        "tags": [
+          "AI Agent",
+          "Evaluation",
+          "Tooling"
+        ],
+        "sample_excerpts": [
+          "A practical agent workflow reaches production customer support teams.",
+          "Shows near-term productized agent workflows instead of vague hype.",
+          "Tooling vendors are packaging eval loops for agent reliability."
+        ]
+      },
+      {
+        "value": "Robotics",
+        "label": "Robotics",
+        "items_published": 1,
+        "impressions": 4,
+        "clicks": 2,
+        "likes": 0,
+        "dislikes": 2,
+        "deep_dives": 0,
+        "dwell_events": 2,
+        "read_sessions": 2,
+        "avg_dwell_seconds": 9.0,
+        "median_dwell_seconds": 9.0,
+        "p75_dwell_seconds": 9.0,
+        "click_rate": 0.5,
+        "like_rate": 0.0,
+        "dislike_rate": 0.5,
+        "deep_dive_rate": 0.0,
+        "dwell_rate": 0.5,
+        "negative_feedback_rate": 0.5,
+        "feedback_sentiment": -1.0,
+        "rate_basis": "impressions",
+        "channels": [
+          "site"
+        ],
+        "sample_status": "insufficient_sample",
+        "confidence": "low",
+        "noise_flags": [],
+        "anonymous_missing_rate": 0.0,
+        "briefing_ids": [
+          "2026-05-12-08"
+        ],
+        "item_ids": [
+          "2026-05-12-08-001"
+        ],
+        "sources": [
+          "Example Robotics"
+        ],
+        "topics": [
+          "Robotics"
+        ],
+        "tags": [
+          "Retail",
+          "Robotics"
+        ],
+        "sample_excerpts": [
+          "More deployments appear, but users still hit operational friction.",
+          "Useful signal for embodied AI commercialization, but weaker immediate actionability."
+        ]
+      }
+    ],
+    "source": [
+      {
+        "value": "Example Feed",
+        "label": "Example Feed",
+        "items_published": 1,
+        "impressions": 6,
+        "clicks": 5,
+        "likes": 4,
+        "dislikes": 0,
+        "deep_dives": 4,
+        "dwell_events": 4,
+        "read_sessions": 4,
+        "avg_dwell_seconds": 150.0,
+        "median_dwell_seconds": 150.0,
+        "p75_dwell_seconds": 150.0,
+        "click_rate": 0.8333,
+        "like_rate": 0.6667,
+        "dislike_rate": 0.0,
+        "deep_dive_rate": 0.6667,
+        "dwell_rate": 0.6667,
+        "negative_feedback_rate": 0.0,
+        "feedback_sentiment": 1.0,
+        "rate_basis": "impressions",
+        "channels": [
+          "site"
+        ],
+        "sample_status": "insufficient_sample",
+        "confidence": "low",
+        "noise_flags": [
+          "inferred_deep_dive_from_dwell"
+        ],
+        "anonymous_missing_rate": 0.0,
+        "briefing_ids": [
+          "2026-05-10-08"
+        ],
+        "item_ids": [
+          "2026-05-10-08-001"
+        ],
+        "sources": [
+          "Example Feed"
+        ],
+        "topics": [
+          "AI Agent"
+        ],
+        "tags": [
+          "AI Agent",
+          "Tooling"
+        ],
+        "sample_excerpts": [
+          "A practical agent workflow reaches production customer support teams.",
+          "Shows near-term productized agent workflows instead of vague hype."
+        ]
+      },
+      {
+        "value": "Example Labs",
+        "label": "Example Labs",
+        "items_published": 1,
+        "impressions": 6,
+        "clicks": 4,
+        "likes": 3,
+        "dislikes": 0,
+        "deep_dives": 3,
+        "dwell_events": 3,
+        "read_sessions": 3,
+        "avg_dwell_seconds": 125.0,
+        "median_dwell_seconds": 125.0,
+        "p75_dwell_seconds": 125.0,
+        "click_rate": 0.6667,
+        "like_rate": 0.5,
+        "dislike_rate": 0.0,
+        "deep_dive_rate": 0.5,
+        "dwell_rate": 0.5,
+        "negative_feedback_rate": 0.0,
+        "feedback_sentiment": 1.0,
+        "rate_basis": "impressions",
+        "channels": [
+          "site"
+        ],
+        "sample_status": "insufficient_sample",
+        "confidence": "low",
+        "noise_flags": [
+          "inferred_deep_dive_from_dwell"
+        ],
+        "anonymous_missing_rate": 0.0,
+        "briefing_ids": [
+          "2026-05-10-13"
+        ],
+        "item_ids": [
+          "2026-05-10-13-001"
+        ],
+        "sources": [
+          "Example Labs"
+        ],
+        "topics": [
+          "AI Agent"
+        ],
+        "tags": [
+          "AI Agent",
+          "Evaluation"
+        ],
+        "sample_excerpts": [
+          "Tooling vendors are packaging eval loops for agent reliability.",
+          "Connects to durable workflow improvements and shipping discipline."
+        ]
+      },
+      {
+        "value": "Example Robotics",
+        "label": "Example Robotics",
+        "items_published": 1,
+        "impressions": 4,
+        "clicks": 2,
+        "likes": 0,
+        "dislikes": 2,
+        "deep_dives": 0,
+        "dwell_events": 2,
+        "read_sessions": 2,
+        "avg_dwell_seconds": 9.0,
+        "median_dwell_seconds": 9.0,
+        "p75_dwell_seconds": 9.0,
+        "click_rate": 0.5,
+        "like_rate": 0.0,
+        "dislike_rate": 0.5,
+        "deep_dive_rate": 0.0,
+        "dwell_rate": 0.5,
+        "negative_feedback_rate": 0.5,
+        "feedback_sentiment": -1.0,
+        "rate_basis": "impressions",
+        "channels": [
+          "site"
+        ],
+        "sample_status": "insufficient_sample",
+        "confidence": "low",
+        "noise_flags": [],
+        "anonymous_missing_rate": 0.0,
+        "briefing_ids": [
+          "2026-05-12-08"
+        ],
+        "item_ids": [
+          "2026-05-12-08-001"
+        ],
+        "sources": [
+          "Example Robotics"
+        ],
+        "topics": [
+          "Robotics"
+        ],
+        "tags": [
+          "Retail",
+          "Robotics"
+        ],
+        "sample_excerpts": [
+          "More deployments appear, but users still hit operational friction.",
+          "Useful signal for embodied AI commercialization, but weaker immediate actionability."
+        ]
+      }
+    ],
+    "tag": [
+      {
+        "value": "Tooling",
+        "label": "Tooling",
+        "items_published": 1,
+        "impressions": 6,
+        "clicks": 5,
+        "likes": 4,
+        "dislikes": 0,
+        "deep_dives": 4,
+        "dwell_events": 4,
+        "read_sessions": 4,
+        "avg_dwell_seconds": 150.0,
+        "median_dwell_seconds": 150.0,
+        "p75_dwell_seconds": 150.0,
+        "click_rate": 0.8333,
+        "like_rate": 0.6667,
+        "dislike_rate": 0.0,
+        "deep_dive_rate": 0.6667,
+        "dwell_rate": 0.6667,
+        "negative_feedback_rate": 0.0,
+        "feedback_sentiment": 1.0,
+        "rate_basis": "impressions",
+        "channels": [
+          "site"
+        ],
+        "sample_status": "insufficient_sample",
+        "confidence": "low",
+        "noise_flags": [
+          "inferred_deep_dive_from_dwell"
+        ],
+        "anonymous_missing_rate": 0.0,
+        "briefing_ids": [
+          "2026-05-10-08"
+        ],
+        "item_ids": [
+          "2026-05-10-08-001"
+        ],
+        "sources": [
+          "Example Feed"
+        ],
+        "topics": [
+          "AI Agent"
+        ],
+        "tags": [
+          "AI Agent",
+          "Tooling"
+        ],
+        "sample_excerpts": [
+          "A practical agent workflow reaches production customer support teams.",
+          "Shows near-term productized agent workflows instead of vague hype."
+        ]
+      },
+      {
+        "value": "AI Agent",
+        "label": "AI Agent",
+        "items_published": 2,
+        "impressions": 12,
+        "clicks": 9,
+        "likes": 7,
+        "dislikes": 0,
+        "deep_dives": 7,
+        "dwell_events": 7,
+        "read_sessions": 7,
+        "avg_dwell_seconds": 139.3,
+        "median_dwell_seconds": 150.0,
+        "p75_dwell_seconds": 150.0,
+        "click_rate": 0.75,
+        "like_rate": 0.5833,
+        "dislike_rate": 0.0,
+        "deep_dive_rate": 0.5833,
+        "dwell_rate": 0.5833,
+        "negative_feedback_rate": 0.0,
+        "feedback_sentiment": 1.0,
+        "rate_basis": "impressions",
+        "channels": [
+          "site"
+        ],
+        "sample_status": "observe",
+        "confidence": "medium",
+        "noise_flags": [
+          "inferred_deep_dive_from_dwell"
+        ],
+        "anonymous_missing_rate": 0.0,
+        "briefing_ids": [
+          "2026-05-10-08",
+          "2026-05-10-13"
+        ],
+        "item_ids": [
+          "2026-05-10-08-001",
+          "2026-05-10-13-001"
+        ],
+        "sources": [
+          "Example Feed",
+          "Example Labs"
+        ],
+        "topics": [
+          "AI Agent"
+        ],
+        "tags": [
+          "AI Agent",
+          "Evaluation",
+          "Tooling"
+        ],
+        "sample_excerpts": [
+          "A practical agent workflow reaches production customer support teams.",
+          "Shows near-term productized agent workflows instead of vague hype.",
+          "Tooling vendors are packaging eval loops for agent reliability."
+        ]
+      },
+      {
+        "value": "Evaluation",
+        "label": "Evaluation",
+        "items_published": 1,
+        "impressions": 6,
+        "clicks": 4,
+        "likes": 3,
+        "dislikes": 0,
+        "deep_dives": 3,
+        "dwell_events": 3,
+        "read_sessions": 3,
+        "avg_dwell_seconds": 125.0,
+        "median_dwell_seconds": 125.0,
+        "p75_dwell_seconds": 125.0,
+        "click_rate": 0.6667,
+        "like_rate": 0.5,
+        "dislike_rate": 0.0,
+        "deep_dive_rate": 0.5,
+        "dwell_rate": 0.5,
+        "negative_feedback_rate": 0.0,
+        "feedback_sentiment": 1.0,
+        "rate_basis": "impressions",
+        "channels": [
+          "site"
+        ],
+        "sample_status": "insufficient_sample",
+        "confidence": "low",
+        "noise_flags": [
+          "inferred_deep_dive_from_dwell"
+        ],
+        "anonymous_missing_rate": 0.0,
+        "briefing_ids": [
+          "2026-05-10-13"
+        ],
+        "item_ids": [
+          "2026-05-10-13-001"
+        ],
+        "sources": [
+          "Example Labs"
+        ],
+        "topics": [
+          "AI Agent"
+        ],
+        "tags": [
+          "AI Agent",
+          "Evaluation"
+        ],
+        "sample_excerpts": [
+          "Tooling vendors are packaging eval loops for agent reliability.",
+          "Connects to durable workflow improvements and shipping discipline."
+        ]
+      },
+      {
+        "value": "Robotics",
+        "label": "Robotics",
+        "items_published": 1,
+        "impressions": 4,
+        "clicks": 2,
+        "likes": 0,
+        "dislikes": 2,
+        "deep_dives": 0,
+        "dwell_events": 2,
+        "read_sessions": 2,
+        "avg_dwell_seconds": 9.0,
+        "median_dwell_seconds": 9.0,
+        "p75_dwell_seconds": 9.0,
+        "click_rate": 0.5,
+        "like_rate": 0.0,
+        "dislike_rate": 0.5,
+        "deep_dive_rate": 0.0,
+        "dwell_rate": 0.5,
+        "negative_feedback_rate": 0.5,
+        "feedback_sentiment": -1.0,
+        "rate_basis": "impressions",
+        "channels": [
+          "site"
+        ],
+        "sample_status": "insufficient_sample",
+        "confidence": "low",
+        "noise_flags": [],
+        "anonymous_missing_rate": 0.0,
+        "briefing_ids": [
+          "2026-05-12-08"
+        ],
+        "item_ids": [
+          "2026-05-12-08-001"
+        ],
+        "sources": [
+          "Example Robotics"
+        ],
+        "topics": [
+          "Robotics"
+        ],
+        "tags": [
+          "Retail",
+          "Robotics"
+        ],
+        "sample_excerpts": [
+          "More deployments appear, but users still hit operational friction.",
+          "Useful signal for embodied AI commercialization, but weaker immediate actionability."
+        ]
+      },
+      {
+        "value": "Retail",
+        "label": "Retail",
+        "items_published": 1,
+        "impressions": 4,
+        "clicks": 2,
+        "likes": 0,
+        "dislikes": 2,
+        "deep_dives": 0,
+        "dwell_events": 2,
+        "read_sessions": 2,
+        "avg_dwell_seconds": 9.0,
+        "median_dwell_seconds": 9.0,
+        "p75_dwell_seconds": 9.0,
+        "click_rate": 0.5,
+        "like_rate": 0.0,
+        "dislike_rate": 0.5,
+        "deep_dive_rate": 0.0,
+        "dwell_rate": 0.5,
+        "negative_feedback_rate": 0.5,
+        "feedback_sentiment": -1.0,
+        "rate_basis": "impressions",
+        "channels": [
+          "site"
+        ],
+        "sample_status": "insufficient_sample",
+        "confidence": "low",
+        "noise_flags": [],
+        "anonymous_missing_rate": 0.0,
+        "briefing_ids": [
+          "2026-05-12-08"
+        ],
+        "item_ids": [
+          "2026-05-12-08-001"
+        ],
+        "sources": [
+          "Example Robotics"
+        ],
+        "topics": [
+          "Robotics"
+        ],
+        "tags": [
+          "Retail",
+          "Robotics"
+        ],
+        "sample_excerpts": [
+          "More deployments appear, but users still hit operational friction.",
+          "Useful signal for embodied AI commercialization, but weaker immediate actionability."
+        ]
+      }
+    ]
+  },
+  "editor_brief": [
+    {
+      "dimension": "topic",
+      "value": "AI Agent",
+      "action": "increase",
+      "status": "pending_review",
+      "confidence": "medium",
+      "sample_status": "observe",
+      "report_type": "editor_recommendation_brief",
+      "rationale": "topic=AI Agent 的 click_rate 75.00%、deep_dive_rate 58.33%、negative_feedback_rate 0.00%。",
+      "evidence": {
+        "items_published": 2,
+        "impressions": 12,
+        "clicks": 9,
+        "likes": 7,
+        "dislikes": 0,
+        "deep_dives": 7
+      },
+      "editor_review_question": "该建议是否代表稳定 editorial preference，而非单月热点、单条新闻或一次性异常波动？"
+    },
+    {
+      "dimension": "tag",
+      "value": "AI Agent",
+      "action": "increase",
+      "status": "pending_review",
+      "confidence": "medium",
+      "sample_status": "observe",
+      "report_type": "editor_recommendation_brief",
+      "rationale": "tag=AI Agent 的 click_rate 75.00%、deep_dive_rate 58.33%、negative_feedback_rate 0.00%。",
+      "evidence": {
+        "items_published": 2,
+        "impressions": 12,
+        "clicks": 9,
+        "likes": 7,
+        "dislikes": 0,
+        "deep_dives": 7
+      },
+      "editor_review_question": "该建议是否代表稳定 editorial preference，而非单月热点、单条新闻或一次性异常波动？"
+    }
+  ],
+  "totals": {
+    "impressions": 16,
+    "clicks": 11,
+    "likes": 7,
+    "dislikes": 2,
+    "deep_dives": 7,
+    "dwell_events": 9,
+    "read_sessions": 9
+  },
+  "editor_memory_workflow": {
+    "owner": "editor_profile",
+    "production_path": "editor_owned_memory_write",
+    "repo_apply_supported": false,
+    "reason": "月度分析只输出给 Editor 的 recommendation brief；Reporter/Coder/Publisher 不直接写入长期编辑记忆。"
+  }
+}

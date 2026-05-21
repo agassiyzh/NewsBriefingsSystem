@@ -1,0 +1,21 @@
+{
+  "month": "2026-05",
+  "review_status": "pending_review",
+  "reviewed_by": "",
+  "reviewed_at": "",
+  "summary": "Editor 审核月度兴趣分析 brief 后，仅可批准稳定、跨月、声明性的 editorial preferences 写入 Editor-owned memory。默认 pending_review，不得自动 apply。",
+  "preferences": [
+    {
+      "id": "pref-2026-05-example-ai-agent",
+      "candidate_preference": "用户连续 3 个月对 AI agent 工具链、开发者自动化与可操作实践类内容保持更高深读兴趣。",
+      "evidence_summary": "2026-03 至 2026-05 多个月份在主题聚合上深读率高于月均，负反馈更低；证据仅来自聚合指标。",
+      "confidence": "high",
+      "editor_decision": "needs_revision",
+      "preference_type": "interest",
+      "action": "add",
+      "stable_preference": true,
+      "stability_window_months": 3,
+      "notes": "只保留声明性偏好，不包含底层事件标识、单条新闻或单月短期峰值。"
+    }
+  ]
+}
