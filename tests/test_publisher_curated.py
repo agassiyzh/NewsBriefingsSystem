@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from pathlib import Path
 
 import yaml
@@ -97,6 +98,35 @@ def _sample_curated_briefing() -> CuratedBriefing:
         ],
         warnings=[],
     )
+
+
+def _sample_curated_briefing_for_slot(slot: str, briefing_id: str, slot_label_text: str, title_prefix: str) -> CuratedBriefing:
+    briefing = deepcopy(_sample_curated_briefing())
+    briefing.slot = slot
+    briefing.briefing_id = briefing_id
+    briefing.slot_label = slot_label_text
+
+    for index, item in enumerate(briefing.items, start=1):
+        original_title = item.title
+        localized_title = f"{title_prefix}{index}｜{original_title}"
+        item.briefing_id = briefing_id
+        item.item_id = f"{briefing_id}-{index:03d}"
+        item.title = localized_title
+        item.action_or_observe = item.action_or_observe.replace(original_title, localized_title)
+        item.feedback_metadata["briefing_id"] = briefing_id
+        item.feedback_metadata["item_id"] = item.item_id
+
+    for index, feedback_item in enumerate(briefing.feedback_items, start=1):
+        original_title = feedback_item["title"]
+        localized_title = f"{title_prefix}{index}｜{original_title}"
+        feedback_item["slot"] = slot
+        feedback_item["briefing_id"] = briefing_id
+        feedback_item["item_id"] = f"{briefing_id}-{index:03d}"
+        feedback_item["title"] = localized_title
+        feedback_item["action_or_observe"] = feedback_item["action_or_observe"].replace(original_title, localized_title)
+
+    return briefing
+
 
 
 def test_export_curated_briefing_to_hugo_preserves_item_level_metadata(tmp_path):
@@ -203,7 +233,7 @@ def test_export_curated_briefing_to_hugo_renders_original_title_as_metadata(tmp_
     assert item_catalog_rows[0]["display_action_or_observe"] == "行动：跟进 面向开发者的 Agent 副驾驶已上线 的产品页、源码或发布说明，判断是否值得纳入现有工具链。"
 
 
-def test_export_curated_briefing_to_hugo_ignores_existing_archive_text(tmp_path):
+def test_export_curated_briefing_to_hugo_replaces_current_slot_and_preserves_other_slots(tmp_path):
     archive_path = tmp_path / "archive" / "2026-05-19.md"
     output_path = tmp_path / "site" / "content" / "briefings" / "2026" / "2026-05-19.md"
     item_catalog_path = tmp_path / "data" / "item_catalog" / "2026" / "2026-05-19.jsonl"
@@ -249,17 +279,20 @@ def test_export_curated_briefing_to_hugo_ignores_existing_archive_text(tmp_path)
     _, front_matter_text, body = text.split("---\n", 2)
     front_matter = yaml.safe_load(front_matter_text)
 
-    assert metadata["item_count"] == 2
+    assert metadata["item_count"] == 3
     assert front_matter["feedback_ui_enabled"] is False
-    assert front_matter["item_count"] == 2
-    assert front_matter["item_ids"] == ["2026-05-19-13-001", "2026-05-19-13-002"]
-    assert body.count('<section class="news-item-card"') == 2
+    assert front_matter["item_count"] == 3
+    assert front_matter["item_ids"] == ["2026-05-19-08-001", "2026-05-19-13-001", "2026-05-19-13-002"]
+    assert [slot["slot"] for slot in front_matter["slots"]] == ["morning", "noon", "evening"]
+    assert body.count('<section class="news-item-card"') == 3
+    assert "Legacy morning item" in body
     assert "Agent copilots ship for developers" in body
     assert "Robotics retail pilots expand" in body
-    assert "Legacy morning item" not in body
     assert "Legacy noon item" not in body
     assert "Legacy noon item 70" not in body
-    assert "Should not appear in curated Hugo export." not in body
+    assert "https://example.com/legacy-noon-1" not in body
+    assert "https://example.com/legacy-noon-70" not in body
+    assert "https://example.com/legacy-morning" in body
     assert "{{< item-feedback" not in body
 
 
@@ -283,3 +316,63 @@ def test_export_curated_briefing_to_hugo_can_reenable_feedback_ui(tmp_path):
     assert metadata["item_count"] == 2
     assert front_matter["feedback_ui_enabled"] is True
     assert '{{< item-feedback briefing_id="2026-05-19-13" item_id="2026-05-19-13-001" source="Working Feed" tags="AI Agent,Tooling" >}}' in body
+
+
+
+def test_export_curated_briefing_to_hugo_merges_slots_and_reruns_replace_existing_slot(tmp_path):
+    archive_path = tmp_path / "archive" / "2026-05-19.md"
+    output_path = tmp_path / "site" / "content" / "briefings" / "2026" / "2026-05-19.md"
+    item_catalog_path = tmp_path / "data" / "item_catalog" / "2026" / "2026-05-19.jsonl"
+
+    morning_briefing = _sample_curated_briefing_for_slot("morning", "2026-05-19-08", "08:00 早间版", "早间条目")
+    first_noon_briefing = _sample_curated_briefing_for_slot("noon", "2026-05-19-13", "13:00 午间版", "午间条目")
+    rerun_noon_briefing = _sample_curated_briefing_for_slot("noon", "2026-05-19-13", "13:00 午间版", "午间重跑")
+
+    export_curated_briefing_to_hugo(
+        briefing=morning_briefing,
+        output_path=output_path,
+        archive_path=archive_path,
+        briefing_day="2026-05-19",
+        timezone_name="Asia/Shanghai",
+        item_catalog_path=item_catalog_path,
+    )
+    export_curated_briefing_to_hugo(
+        briefing=first_noon_briefing,
+        output_path=output_path,
+        archive_path=archive_path,
+        briefing_day="2026-05-19",
+        timezone_name="Asia/Shanghai",
+        item_catalog_path=item_catalog_path,
+    )
+    export_curated_briefing_to_hugo(
+        briefing=rerun_noon_briefing,
+        output_path=output_path,
+        archive_path=archive_path,
+        briefing_day="2026-05-19",
+        timezone_name="Asia/Shanghai",
+        item_catalog_path=item_catalog_path,
+    )
+
+    text = output_path.read_text(encoding="utf-8")
+    _, front_matter_text, body = text.split("---\n", 2)
+    front_matter = yaml.safe_load(front_matter_text)
+    item_catalog_rows = [json.loads(line) for line in item_catalog_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    assert [slot["slot"] for slot in front_matter["slots"]] == ["morning", "noon", "evening"]
+    assert front_matter["item_count"] == 4
+    assert front_matter["item_ids"] == [
+        "2026-05-19-08-001",
+        "2026-05-19-08-002",
+        "2026-05-19-13-001",
+        "2026-05-19-13-002",
+    ]
+    assert front_matter["feedback_ui_enabled"] is False
+    assert "## 08:00 早间版" in body
+    assert "## 13:00 午间版" in body
+    assert "早间条目1｜Agent copilots ship for developers" in body
+    assert "午间重跑1｜Agent copilots ship for developers" in body
+    assert "午间条目1｜Agent copilots ship for developers" not in body
+    assert body.count('data-news-item-id="2026-05-19-13-001"') == 1
+    assert len(item_catalog_rows) == 4
+    assert [row["slot"] for row in item_catalog_rows] == ["morning", "morning", "noon", "noon"]
+    assert item_catalog_rows[2]["title"] == "午间重跑1｜Agent copilots ship for developers"

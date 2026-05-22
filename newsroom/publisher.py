@@ -873,72 +873,32 @@ def export_curated_briefing_to_hugo(
     include_feedback_ui: bool = False,
 ) -> dict[str, Any]:
     archive = Path(archive_path)
-    archive_text = _compose_curated_archive_text(
+    existing_text = archive.read_text(encoding='utf-8') if archive.exists() else ''
+    title, sections = parse_archive_sections(existing_text, briefing_day)
+    sections[slot_header(briefing.slot)] = render_archive_slot(
+        CollectResult(
+            briefing_id=briefing.briefing_id,
+            collected_at=briefing.generated_at,
+            candidates=[],
+            markdown='',
+            error_count=0,
+            errors=[],
+        ),
         briefing,
-        briefing_day,
         include_feedback_ui=include_feedback_ui,
     )
-    if not archive.exists():
-        archive.parent.mkdir(parents=True, exist_ok=True)
-        archive.write_text(archive_text, encoding='utf-8')
-    front_matter = {
-        'title': archive_title(briefing_day).removeprefix('# ').strip(),
-        'date': _front_matter_datetime(briefing_day, timezone_name),
-        'briefing_day': briefing_day,
-        'timezone': timezone_name,
-        'item_count': briefing.curated_item_count,
-        'item_ids': [item.item_id for item in briefing.items],
-        'sources': sorted({item.source for item in briefing.items if item.source}),
-        'tags': sorted({tag for item in briefing.items for tag in item.tags}),
-        'feedback_ui_enabled': include_feedback_ui,
-        'feedback_primary_briefing_id': briefing.briefing_id,
-        'feedback_items': [dict(item) for item in briefing.feedback_items],
-        'slots': [
-            {
-                'slot': briefing.slot,
-                'label': briefing.slot_label,
-                'briefing_id': briefing.briefing_id,
-                'item_count': briefing.curated_item_count,
-            }
-        ],
-        'draft': False,
-    }
+    archive_text = compose_archive_text(briefing_day, sections, title=title)
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    archive.write_text(archive_text, encoding='utf-8')
 
-    output = Path(output_path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    front_matter_text = yaml.safe_dump(front_matter, sort_keys=False, allow_unicode=True).strip()
-    hugo_content = render_hugo_content_with_inline_feedback(
-        archive_text,
-        briefing_day,
+    return export_archive_to_hugo(
+        archive_path=archive,
+        output_path=output_path,
+        briefing_day=briefing_day,
+        timezone_name=timezone_name,
+        item_catalog_path=item_catalog_path,
         include_feedback_ui=include_feedback_ui,
     )
-    output.write_text(f'---\n{front_matter_text}\n---\n\n{hugo_content.rstrip()}\n', encoding='utf-8')
-
-    catalog_rows = build_item_catalog_rows(briefing_day, _curated_slot_rows(briefing))
-    catalog_target = Path(item_catalog_path) if item_catalog_path is not None else None
-    item_catalog_metadata = {
-        'status': 'skipped',
-        'output_path': None,
-        'item_count': len(catalog_rows),
-    }
-    if catalog_target is not None:
-        write_item_catalog(catalog_target, catalog_rows)
-        item_catalog_metadata = {
-            'status': 'updated',
-            'output_path': str(catalog_target),
-            'item_count': len(catalog_rows),
-        }
-
-    return {
-        'briefing_day': briefing_day,
-        'item_count': briefing.curated_item_count,
-        'item_ids': [item.item_id for item in briefing.items],
-        'sources': sorted({item.source for item in briefing.items if item.source}),
-        'tags': sorted({tag for item in briefing.items for tag in item.tags}),
-        'feedback_primary_briefing_id': briefing.briefing_id,
-        'feedback_item_count': len(briefing.feedback_items),
-        'item_catalog': item_catalog_metadata,
-    }
 
 
 def export_archive_to_hugo(
@@ -972,22 +932,39 @@ def export_archive_to_hugo(
             primary_briefing_id = briefing_id
         total_items += len(items)
         for item in items:
-            if item.get('item_id'):
-                item_ids.append(item['item_id'])
-            if item.get('source'):
-                sources.add(item['source'])
-            for tag in item.get('tags', []):
+            item_id = item.get('item_id')
+            if item_id:
+                item_ids.append(item_id)
+            source = item.get('source')
+            if source:
+                sources.add(source)
+            item_tags = list(item.get('tags', []))
+            for tag in item_tags:
                 tags.add(tag)
-            feedback_items.append(
-                {
-                    'slot': slot_name,
-                    'briefing_id': briefing_id,
-                    'item_id': item.get('item_id'),
-                    'source': item.get('source'),
-                    'url': item.get('url'),
-                    'tags': list(item.get('tags', [])),
-                }
-            )
+
+            feedback_item = {
+                'slot': slot_name,
+                'briefing_id': briefing_id,
+                'item_id': item_id,
+                'source': source,
+                'url': item.get('url'),
+                'tags': item_tags,
+                'topic': item.get('topic') or (item_tags[0] if item_tags else 'untagged'),
+                'title': item.get('title') or _item_title_from_heading(str(item.get('heading', ''))),
+                'summary': item.get('summary', ''),
+            }
+            for optional_key in (
+                'published',
+                'why_relevant',
+                'action_or_observe',
+                'channel',
+                'original_title',
+                'display_action_or_observe',
+                'display_selection_reason',
+            ):
+                if optional_key in item:
+                    feedback_item[optional_key] = item.get(optional_key)
+            feedback_items.append(feedback_item)
             item_catalog_seed.append(
                 {
                     'slot': slot_name,

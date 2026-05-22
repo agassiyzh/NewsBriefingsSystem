@@ -276,6 +276,9 @@ def test_export_archive_to_hugo_writes_front_matter_and_slot_metadata(tmp_path):
             "source": "Working Feed",
             "url": "https://example.com/story",
             "tags": ["AI Agent", "Tooling"],
+            "topic": "AI Agent",
+            "title": "Agent copilots ship for developers",
+            "summary": "A new agent workflow shipped.",
         },
         {
             "slot": "noon",
@@ -284,6 +287,9 @@ def test_export_archive_to_hugo_writes_front_matter_and_slot_metadata(tmp_path):
             "source": "Noon Feed",
             "url": "https://example.com/noon",
             "tags": ["Robotics"],
+            "topic": "Robotics",
+            "title": "Robotics retail pilots expand",
+            "summary": "Pilots expanded.",
         },
     ]
     assert front_matter["slots"][0]["briefing_id"] == "2026-05-19-08"

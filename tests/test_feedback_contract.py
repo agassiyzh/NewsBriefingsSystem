@@ -95,6 +95,9 @@ def test_feedback_export_front_matter_contains_item_mapping(tmp_path):
         "source": "Working Feed",
         "url": "https://example.com/story",
         "tags": ["AI Agent", "Tooling"],
+        "topic": "AI Agent",
+        "title": "Agent copilots ship for developers",
+        "summary": "A new agent workflow shipped.",
     }
 
 

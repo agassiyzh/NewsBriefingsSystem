@@ -73,6 +73,9 @@ def test_ensure_sample_briefing_export_generates_hugo_content(tmp_path):
         "source": "Example Feed",
         "url": "https://example.com/agent-workflow",
         "tags": ["AI Agent", "Tooling"],
+        "topic": "AI Agent",
+        "title": "示例：AI agent workflow 进入团队协作",
+        "summary": "示例条目，仅用于公开演示 GitHub Pages 页面结构。",
     }
     assert item_catalog_rows == [
         {
