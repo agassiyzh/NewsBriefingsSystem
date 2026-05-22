@@ -64,6 +64,7 @@ def test_compose_briefing_selects_curated_subset_and_preserves_traceability():
         "why_relevant": briefing.items[0].why_relevant,
         "action_or_observe": briefing.items[0].action_or_observe,
     }
+    assert briefing.items[0].original_title == ""
     assert briefing.items[0].feedback_metadata == {
         "briefing_id": "2026-05-19-13",
         "item_id": "2026-05-19-13-001",
@@ -134,6 +135,49 @@ def test_compose_briefing_rewrites_summary_without_copying_candidate_snippet():
     assert "GitHub" in briefing.items[0].rewritten_summary
     assert briefing.items[0].feedback_metadata["item_id"] == "2026-05-19-13-001"
     assert briefing.feedback_items[0]["summary"] == briefing.items[0].rewritten_summary
+
+
+def test_compose_briefing_uses_translated_display_title_when_translator_provided():
+    title = "Spotify Studio’s AI agent creates a daily podcast just for you"
+    snippet = "Studio by Spotify Labs is a new standalone AI app that generates a daily briefing."
+    result = CollectResult(
+        briefing_id="2026-05-19-13",
+        collected_at="2026-05-19T00:05:00+00:00",
+        candidates=[
+            _candidate(
+                1,
+                title=title,
+                snippet=snippet,
+                keywords=["Spotify", "agent", "podcast"],
+            )
+        ],
+        markdown="# 新闻候选上下文\n",
+        error_count=0,
+        errors=[],
+    )
+
+    translations = {
+        title: "Spotify Studio 的 AI 代理为你生成每日播客",
+        snippet: "Spotify Labs 推出的 Studio 是一款独立 AI 应用，可生成每日简报。",
+    }
+
+    briefing = compose_briefing(
+        result,
+        slot="noon",
+        generated_at="2026-05-19T00:10:00+00:00",
+        default_channel="site",
+        translator=lambda text: translations.get(text, text),
+    )
+
+    item = briefing.items[0]
+    assert item.title == "Spotify Studio 的 AI 代理为你生成每日播客"
+    assert item.original_title == title
+    assert item.rewritten_summary.startswith("Spotify Studio 的 AI 代理为你生成每日播客：")
+    assert "每日简报" in item.rewritten_summary
+    assert item.action_or_observe.startswith("行动：跟进Spotify Studio 的 AI 代理为你生成每日播客")
+    assert briefing.feedback_items[0]["title"] == item.title
+    assert briefing.feedback_items[0]["original_title"] == title
+    assert briefing.feedback_items[0]["display_action_or_observe"].startswith("行动：跟进Spotify Studio 的 AI 代理为你生成每日播客")
 
 
 def test_compose_briefing_ranks_and_deduplicates_candidates_before_selection():

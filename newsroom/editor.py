@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import asdict, dataclass
 import re
-from typing import Any
+from typing import Any, Callable
 
 from .collector import CollectResult
 from .ids import slot_label
@@ -68,6 +68,7 @@ class CuratedItem:
     action_or_observe: str
     selection_reason: str
     feedback_metadata: dict[str, Any]
+    original_title: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -130,6 +131,30 @@ def _strip_title_prefix(snippet: str, title: str) -> str:
     pattern = re.compile(rf"^{re.escape(title.strip())}[\s:：,，\-–—]*", re.IGNORECASE)
     stripped = pattern.sub("", snippet, count=1).strip()
     return stripped or snippet
+
+
+def _contains_cjk(text: str) -> bool:
+    return any("\u4e00" <= char <= "\u9fff" for char in text)
+
+
+def _translate_text(text: str, translator: Callable[[str], str] | None) -> str:
+    normalized = str(text or "").strip()
+    if not normalized or translator is None or _contains_cjk(normalized):
+        return normalized
+    translated = str(translator(normalized) or "").strip()
+    return translated or normalized
+
+
+def _localized_candidate(candidate: dict[str, Any], translator: Callable[[str], str] | None) -> dict[str, Any]:
+    localized = dict(candidate)
+    original_title = str(candidate.get("title", "") or "").strip()
+    translated_title = _translate_text(original_title, translator)
+    translated_snippet = _translate_text(candidate.get("snippet", ""), translator)
+    localized["title"] = translated_title
+    localized["snippet"] = translated_snippet
+    if translated_title and translated_title != original_title:
+        localized["original_title"] = original_title
+    return localized
 
 
 def _rewrite_summary(candidate: dict[str, Any]) -> str:
@@ -270,6 +295,7 @@ def compose_briefing(
     selected_min: int = DEFAULT_SELECTED_MIN,
     selected_max: int = DEFAULT_SELECTED_MAX,
     default_channel: str = "unknown",
+    translator: Callable[[str], str] | None = None,
 ) -> CuratedBriefing:
     selected_candidates, unique_candidate_count = _select_candidates(
         list(collect_result.candidates),
@@ -280,47 +306,54 @@ def compose_briefing(
     feedback_items: list[dict[str, Any]] = []
 
     for rank, candidate in enumerate(selected_candidates, start=1):
-        topic = _topic(candidate)
+        localized_candidate = _localized_candidate(candidate, translator)
+        topic = _topic(localized_candidate)
         item = CuratedItem(
             briefing_id=collect_result.briefing_id,
-            item_id=str(candidate.get("item_id", "") or ""),
+            item_id=str(localized_candidate.get("item_id", "") or ""),
             rank=rank,
-            title=str(candidate.get("title", "") or "").strip(),
-            source=str(candidate.get("source", "") or "").strip(),
-            url=str(candidate.get("url", "") or "").strip(),
-            published=str(candidate.get("published", "") or "").strip(),
-            tags=[str(tag).strip() for tag in candidate.get("tags", []) if str(tag).strip()],
+            title=str(localized_candidate.get("title", "") or "").strip(),
+            source=str(localized_candidate.get("source", "") or "").strip(),
+            url=str(localized_candidate.get("url", "") or "").strip(),
+            published=str(localized_candidate.get("published", "") or "").strip(),
+            tags=[str(tag).strip() for tag in localized_candidate.get("tags", []) if str(tag).strip()],
             topic=topic,
-            rewritten_summary=_rewrite_summary(candidate),
-            why_relevant=_why_relevant(candidate),
-            action_or_observe=_action_or_observe(candidate),
-            selection_reason=_selection_reason(candidate),
+            rewritten_summary=_rewrite_summary(localized_candidate),
+            why_relevant=_why_relevant(localized_candidate),
+            action_or_observe=_action_or_observe(localized_candidate),
+            selection_reason=_selection_reason(localized_candidate),
             feedback_metadata={
                 "briefing_id": collect_result.briefing_id,
-                "item_id": str(candidate.get("item_id", "") or ""),
-                "source": str(candidate.get("source", "") or "").strip(),
-                "tags": [str(tag).strip() for tag in candidate.get("tags", []) if str(tag).strip()],
+                "item_id": str(localized_candidate.get("item_id", "") or ""),
+                "source": str(localized_candidate.get("source", "") or "").strip(),
+                "tags": [str(tag).strip() for tag in localized_candidate.get("tags", []) if str(tag).strip()],
                 "topic": topic,
                 "channel": default_channel,
             },
+            original_title=str(localized_candidate.get("original_title", "") or "").strip(),
         )
         items.append(item)
-        feedback_items.append(
-            {
-                "slot": slot,
-                "briefing_id": item.briefing_id,
-                "item_id": item.item_id,
-                "source": item.source,
-                "url": item.url,
-                "tags": list(item.tags),
-                "topic": item.topic,
-                "channel": default_channel,
-                "title": item.title,
-                "summary": item.rewritten_summary,
-                "why_relevant": item.why_relevant,
-                "action_or_observe": item.action_or_observe,
-            }
-        )
+        feedback_item = {
+            "slot": slot,
+            "briefing_id": item.briefing_id,
+            "item_id": item.item_id,
+            "source": item.source,
+            "url": item.url,
+            "tags": list(item.tags),
+            "topic": item.topic,
+            "channel": default_channel,
+            "title": item.title,
+            "summary": item.rewritten_summary,
+            "why_relevant": item.why_relevant,
+            "action_or_observe": item.action_or_observe,
+        }
+        if item.original_title:
+            feedback_item["original_title"] = item.original_title
+            if item.action_or_observe:
+                feedback_item["display_action_or_observe"] = item.action_or_observe.replace(item.original_title, item.title)
+            if item.selection_reason:
+                feedback_item["display_selection_reason"] = item.selection_reason.replace(item.original_title, item.title)
+        feedback_items.append(feedback_item)
 
     warnings: list[str] = []
     if unique_candidate_count < selected_min and collect_result.candidates:

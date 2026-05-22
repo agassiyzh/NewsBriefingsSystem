@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
+import os
 import subprocess
 import tempfile
 import time
@@ -56,6 +58,7 @@ def run_command(
     cwd: Path,
     check: bool = True,
     timeout: int = 600,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     completed = subprocess.run(
         args,
@@ -64,6 +67,7 @@ def run_command(
         capture_output=True,
         text=True,
         timeout=timeout,
+        env=env,
     )
     if check and completed.returncode != 0:
         command = " ".join(args)
@@ -139,6 +143,32 @@ def load_manifest_context(manifest_path: str | Path) -> tuple[dict[str, Any], di
     return manifest, newsroom_config, repo_root
 
 
+def load_github_token_from_hosts(hosts_path: str | Path | None = None) -> str | None:
+    target = Path(hosts_path).expanduser() if hosts_path is not None else Path.home() / ".config" / "gh" / "hosts.yml"
+    if not target.is_file():
+        return None
+    payload = yaml.safe_load(target.read_text(encoding="utf-8")) or {}
+    github_host = payload.get("github.com") or {}
+    token = str(github_host.get("oauth_token") or "").strip()
+    return token or None
+
+
+def build_git_command_env(
+    remote_url: str,
+    *,
+    github_token: str | None,
+    base_env: dict[str, str] | None = None,
+) -> dict[str, str]:
+    env = dict(base_env or os.environ)
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    if github_token and "github.com" in remote_url:
+        encoded = base64.b64encode(f"x-access-token:{github_token}".encode("utf-8")).decode("ascii")
+        env["GIT_CONFIG_COUNT"] = "1"
+        env["GIT_CONFIG_KEY_0"] = "http.https://github.com/.extraheader"
+        env["GIT_CONFIG_VALUE_0"] = f"AUTHORIZATION: basic {encoded}"
+    return env
+
+
 def build_smoke_site(
     repo_root: Path,
     *,
@@ -183,8 +213,10 @@ def ensure_feedback_ui_absent(html: str, html_path: Path) -> None:
 
 
 def git_push_preflight(repo_root: Path) -> None:
+    remote_url = run_command(["git", "remote", "get-url", "origin"], cwd=repo_root).stdout.strip()
+    env = build_git_command_env(remote_url, github_token=load_github_token_from_hosts())
     try:
-        run_command(["git", "push", "--dry-run", "origin", "HEAD:main"], cwd=repo_root, timeout=600)
+        run_command(["git", "push", "--dry-run", "origin", "HEAD:main"], cwd=repo_root, timeout=600, env=env)
     except PublishError as exc:
         raise PublishError(f"git push preflight failed before creating commit: {exc}") from exc
 
@@ -195,6 +227,8 @@ def git_commit_and_push(
     files: list[str],
     commit_message: str,
 ) -> str:
+    remote_url = run_command(["git", "remote", "get-url", "origin"], cwd=repo_root).stdout.strip()
+    env = build_git_command_env(remote_url, github_token=load_github_token_from_hosts())
     run_command(["git", "add", "--", *files], cwd=repo_root)
     cached_diff = run_command(["git", "diff", "--cached", "--name-only", "--", *files], cwd=repo_root)
     if not cached_diff.stdout.strip():
@@ -203,7 +237,7 @@ def git_commit_and_push(
     commit_sha = run_command(["git", "rev-parse", "HEAD"], cwd=repo_root).stdout.strip()
     if not commit_sha:
         raise PublishError("git rev-parse HEAD returned an empty commit sha")
-    run_command(["git", "push", "origin", "HEAD:main"], cwd=repo_root, timeout=600)
+    run_command(["git", "push", "origin", "HEAD:main"], cwd=repo_root, timeout=600, env=env)
     return commit_sha
 
 

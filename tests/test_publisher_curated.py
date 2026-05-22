@@ -167,6 +167,42 @@ def test_export_curated_briefing_to_hugo_preserves_item_level_metadata(tmp_path)
     ]
 
 
+def test_export_curated_briefing_to_hugo_renders_original_title_as_metadata(tmp_path):
+    archive_path = tmp_path / "archive" / "2026-05-19.md"
+    output_path = tmp_path / "site" / "content" / "briefings" / "2026" / "2026-05-19.md"
+    item_catalog_path = tmp_path / "data" / "item_catalog" / "2026" / "2026-05-19.jsonl"
+    briefing = _sample_curated_briefing()
+    briefing.items[0].original_title = "Agent copilots ship for developers"
+    briefing.items[0].title = "面向开发者的 Agent 副驾驶已上线"
+    briefing.feedback_items[0]["title"] = briefing.items[0].title
+    briefing.feedback_items[0]["original_title"] = briefing.items[0].original_title
+    briefing.feedback_items[0]["display_action_or_observe"] = "行动：跟进 面向开发者的 Agent 副驾驶已上线 的产品页、源码或发布说明，判断是否值得纳入现有工具链。"
+
+    export_curated_briefing_to_hugo(
+        briefing=briefing,
+        output_path=output_path,
+        archive_path=archive_path,
+        briefing_day="2026-05-19",
+        timezone_name="Asia/Shanghai",
+        item_catalog_path=item_catalog_path,
+    )
+
+    text = output_path.read_text(encoding="utf-8")
+    _, front_matter_text, body = text.split("---\n", 2)
+    front_matter = yaml.safe_load(front_matter_text)
+    item_catalog_rows = [json.loads(line) for line in item_catalog_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    assert "### 1｜面向开发者的 Agent 副驾驶已上线" in body
+    assert "行动建议：行动：跟进 面向开发者的 Agent 副驾驶已上线 的产品页、源码或发布说明，判断是否值得纳入现有工具链。" in body
+    assert "Agent copilots ship for developers" not in body
+    assert front_matter["feedback_items"][0]["title"] == "面向开发者的 Agent 副驾驶已上线"
+    assert front_matter["feedback_items"][0]["original_title"] == "Agent copilots ship for developers"
+    assert front_matter["feedback_items"][0]["display_action_or_observe"] == "行动：跟进 面向开发者的 Agent 副驾驶已上线 的产品页、源码或发布说明，判断是否值得纳入现有工具链。"
+    assert item_catalog_rows[0]["title"] == "面向开发者的 Agent 副驾驶已上线"
+    assert item_catalog_rows[0]["original_title"] == "Agent copilots ship for developers"
+    assert item_catalog_rows[0]["display_action_or_observe"] == "行动：跟进 面向开发者的 Agent 副驾驶已上线 的产品页、源码或发布说明，判断是否值得纳入现有工具链。"
+
+
 def test_export_curated_briefing_to_hugo_ignores_existing_archive_text(tmp_path):
     archive_path = tmp_path / "archive" / "2026-05-19.md"
     output_path = tmp_path / "site" / "content" / "briefings" / "2026" / "2026-05-19.md"

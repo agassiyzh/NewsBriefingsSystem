@@ -5,29 +5,35 @@ from pathlib import Path
 
 import yaml
 
+from newsroom import runner as runner_module
 from newsroom.runner import run_briefing
 from newsroom.auto_publish import (
     PublishError,
+    build_git_command_env,
     changed_briefing_files,
     default_commit_message,
     ensure_feedback_ui_absent,
     git_push_preflight,
+    load_github_token_from_hosts,
     parse_git_status_porcelain,
 )
 
 
-def _write_phase1_configs(base_dir: Path, archive_dir: Path) -> Path:
+def _write_phase1_configs(base_dir: Path, archive_dir: Path, *, default_language: str | None = None) -> Path:
     system_dir = base_dir / "system"
     config_dir = system_dir / "config"
     config_dir.mkdir(parents=True)
 
+    system_config = {
+        "timezone": "Asia/Shanghai",
+        "archive_dir": str(archive_dir),
+        "system_dir": str(system_dir),
+    }
+    if default_language is not None:
+        system_config["default_language"] = default_language
+
     newsroom_config = {
-        "system": {
-            "timezone": "Asia/Shanghai",
-            "archive_dir": str(archive_dir),
-            "system_dir": str(system_dir),
-            "default_language": "zh-CN",
-        },
+        "system": system_config,
         "collection": {
             "max_total": 10,
         },
@@ -69,7 +75,7 @@ def _fake_fetch(source):
 
 def test_run_briefing_dry_run_writes_outputs_but_skips_archive(tmp_path):
     archive_dir = tmp_path / "archive"
-    config_dir = _write_phase1_configs(tmp_path, archive_dir)
+    config_dir = _write_phase1_configs(tmp_path, archive_dir, default_language=None)
     preview_path = tmp_path / "system" / "data" / "telegram" / "2026-05-19-08.txt"
     hugo_output = tmp_path / "system" / "site" / "content" / "briefings" / "2026" / "2026-05-19.md"
 
@@ -111,7 +117,7 @@ def test_run_briefing_dry_run_writes_outputs_but_skips_archive(tmp_path):
 
 def test_run_briefing_non_dry_run_updates_slot_without_overwriting_other_sections(tmp_path):
     archive_dir = tmp_path / "archive"
-    config_dir = _write_phase1_configs(tmp_path, archive_dir)
+    config_dir = _write_phase1_configs(tmp_path, archive_dir, default_language=None)
     preview_path = tmp_path / "system" / "data" / "telegram" / "2026-05-19-08.txt"
     hugo_output = tmp_path / "system" / "site" / "content" / "briefings" / "2026" / "2026-05-19.md"
     archive_dir.mkdir(parents=True)
@@ -186,7 +192,7 @@ def test_run_briefing_non_dry_run_updates_slot_without_overwriting_other_section
 
 def test_run_briefing_exports_hugo_before_generating_compact_telegram_preview(tmp_path, monkeypatch):
     archive_dir = tmp_path / "archive"
-    config_dir = _write_phase1_configs(tmp_path, archive_dir)
+    config_dir = _write_phase1_configs(tmp_path, archive_dir, default_language=None)
 
     newsroom_path = str((config_dir / "newsroom.yaml").resolve())
     config = yaml.safe_load(Path(newsroom_path).read_text(encoding="utf-8"))
@@ -237,7 +243,7 @@ def test_run_briefing_exports_hugo_before_generating_compact_telegram_preview(tm
 
 def test_run_briefing_uses_config_timezone_for_briefing_id(tmp_path):
     archive_dir = tmp_path / "archive"
-    config_dir = _write_phase1_configs(tmp_path, archive_dir)
+    config_dir = _write_phase1_configs(tmp_path, archive_dir, default_language=None)
 
     result = run_briefing(
         config_path=config_dir / "newsroom.yaml",
@@ -331,3 +337,68 @@ def test_git_push_preflight_fails_before_commit_when_origin_is_unreachable(tmp_p
         assert "git push preflight failed before creating commit" in str(exc)
     else:
         raise AssertionError("expected git push preflight to raise PublishError")
+
+
+def test_load_github_token_from_hosts_reads_oauth_token(tmp_path):
+    hosts_file = tmp_path / "hosts.yml"
+    hosts_file.write_text(
+        yaml.safe_dump(
+            {
+                "github.com": {
+                    "user": "tester",
+                    "oauth_token": "token-123",
+                }
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    assert load_github_token_from_hosts(hosts_file) == "token-123"
+
+
+def test_build_git_command_env_adds_github_auth_header_without_exposing_raw_token():
+    env = build_git_command_env("https://github.com/example/repo.git", github_token="token-123", base_env={})
+
+    assert env["GIT_TERMINAL_PROMPT"] == "0"
+    assert env["GIT_CONFIG_COUNT"] == "1"
+    assert env["GIT_CONFIG_KEY_0"] == "http.https://github.com/.extraheader"
+    assert env["GIT_CONFIG_VALUE_0"].startswith("AUTHORIZATION: basic ")
+    assert "token-123" not in env["GIT_CONFIG_VALUE_0"]
+
+
+def test_run_briefing_localizes_curated_output_when_default_language_is_zh_cn(tmp_path, monkeypatch):
+    archive_dir = tmp_path / "archive"
+    config_dir = _write_phase1_configs(tmp_path, archive_dir, default_language="zh-CN")
+
+    monkeypatch.setattr(
+        runner_module,
+        "build_candidate_translator",
+        lambda default_language: (lambda text: {
+            "Agent copilots ship for developers": "面向开发者的 Agent 副驾驶已上线",
+            "A new agent workflow shipped.": "新的 Agent 工作流已经上线。",
+        }.get(text, text)),
+    )
+
+    result = run_briefing(
+        config_path=config_dir / "newsroom.yaml",
+        sources_path=config_dir / "sources.yaml",
+        interests_path=config_dir / "interests.yaml",
+        slot="morning",
+        dry_run=False,
+        fetcher=_fake_fetch,
+        now=datetime(2026, 5, 19, 0, 5, tzinfo=UTC),
+    )
+
+    manifest = json.loads(Path(result.manifest_path).read_text(encoding="utf-8"))
+    curated_payload = json.loads(Path(manifest["curated_output"]).read_text(encoding="utf-8"))
+    hugo_text = Path(manifest["publication"]["hugo_export"]["output_path"]).read_text(encoding="utf-8")
+    _, front_matter_text, body = hugo_text.split("---\n", 2)
+    front_matter = yaml.safe_load(front_matter_text)
+
+    assert curated_payload["items"][0]["title"] == "面向开发者的 Agent 副驾驶已上线"
+    assert curated_payload["items"][0]["original_title"] == "Agent copilots ship for developers"
+    assert curated_payload["items"][0]["rewritten_summary"].startswith("面向开发者的 Agent 副驾驶已上线：")
+    assert front_matter["feedback_items"][0]["original_title"] == "Agent copilots ship for developers"
+    assert "Agent copilots ship for developers" not in body
+    assert "面向开发者的 Agent 副驾驶已上线" in body

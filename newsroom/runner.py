@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote
+from urllib.request import Request, urlopen
 
 from .collector import (
     DEFAULT_MAX_TOTAL,
@@ -46,6 +50,63 @@ class RunResult:
     log_path: str
 
 
+TRANSLATE_USER_AGENT = 'NewsBriefingsSystem/translator'
+
+
+def _language_prefers_chinese(default_language: str | None) -> bool:
+    normalized = str(default_language or '').strip().lower().replace('_', '-')
+    return normalized.startswith('zh')
+
+
+def _extract_google_translation(payload: object) -> str:
+    if not isinstance(payload, list) or not payload:
+        return ''
+    sentences = payload[0]
+    if not isinstance(sentences, list):
+        return ''
+    translated_parts: list[str] = []
+    for sentence in sentences:
+        if not isinstance(sentence, list) or not sentence:
+            continue
+        translated = sentence[0]
+        if isinstance(translated, str) and translated.strip():
+            translated_parts.append(translated)
+    return ''.join(translated_parts).strip()
+
+
+def build_candidate_translator(default_language: str | None):
+    if not _language_prefers_chinese(default_language):
+        return None
+
+    cache: dict[str, str] = {}
+
+    def translator(text: str) -> str:
+        normalized = str(text or '').strip()
+        if not normalized:
+            return normalized
+        cached = cache.get(normalized)
+        if cached is not None:
+            return cached
+
+        api_url = (
+            'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q='
+            + quote(normalized)
+        )
+        request = Request(api_url, headers={'User-Agent': TRANSLATE_USER_AGENT})
+        try:
+            with urlopen(request, timeout=20) as response:  # noqa: S310
+                payload = json.loads(response.read().decode('utf-8'))
+        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+            cache[normalized] = normalized
+            return normalized
+
+        translated = _extract_google_translation(payload) or normalized
+        cache[normalized] = translated
+        return translated
+
+    return translator
+
+
 def append_log(log_path: Path, message: str) -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(UTC).isoformat(timespec='seconds')
@@ -75,6 +136,7 @@ def run_briefing(
     briefing_day = '-'.join(resolved_briefing_id.split('-')[:3])
 
     system_cfg = newsroom_config.get('system', {})
+    candidate_translator = build_candidate_translator(system_cfg.get('default_language'))
     archive_dir = resolve_path(system_dir, system_cfg.get('archive_dir', '/opt/data/home/NewsBriefings'))
     archive_path = archive_dir / f'{briefing_day}.md'
     path_cfg = merged_paths(newsroom_config)
@@ -109,6 +171,7 @@ def run_briefing(
         slot=normalized_slot,
         generated_at=runtime.astimezone(UTC).isoformat(timespec='seconds'),
         default_channel=str(newsroom_config.get('feedback', {}).get('default_channel', 'unknown')),
+        translator=candidate_translator,
     )
     curated_output = briefings_dir / f'{resolved_briefing_id}.json'
     dump_json(curated_output, curated_briefing.to_dict())

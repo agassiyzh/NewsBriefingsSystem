@@ -32,6 +32,9 @@ SELECTION_REASON_RE = re.compile(r'-\s*selection_reason:\s*(.+)')
 CHANNEL_RE = re.compile(r'-\s*channel:\s*(.+)')
 STATUS_RE = re.compile(r'-\s*status:\s*(.+)')
 ERROR_RE = re.compile(r'-\s*error:\s*(.+)')
+ORIGINAL_TITLE_RE = re.compile(r'-\s*original_title:\s*(.+)')
+DISPLAY_ACTION_RE = re.compile(r'-\s*display_action_or_observe:\s*(.+)')
+DISPLAY_SELECTION_REASON_RE = re.compile(r'-\s*display_selection_reason:\s*(.+)')
 ITEM_HEADING_RE = re.compile(r'###\s+(.+)')
 SUMMARY_PREFIX = '摘要：'
 
@@ -307,8 +310,20 @@ def render_archive_slot(
             if item.topic:
                 lines.append(f'- topic: {item.topic}')
             lines.append(f'- why_relevant: {item.why_relevant}')
+            if item.original_title:
+                lines.append(f'- original_title: {item.original_title}')
+            display_action = str(item.feedback_metadata.get('display_action_or_observe') or '').strip()
+            if not display_action and item.original_title:
+                display_action = item.action_or_observe.replace(item.original_title, item.title).strip()
+            display_selection_reason = str(item.feedback_metadata.get('display_selection_reason') or '').strip()
+            if not display_selection_reason and item.original_title:
+                display_selection_reason = item.selection_reason.replace(item.original_title, item.title).strip()
             lines.append(f'- action_or_observe: {item.action_or_observe}')
+            if display_action and display_action != item.action_or_observe:
+                lines.append(f'- display_action_or_observe: {display_action}')
             lines.append(f'- selection_reason: {item.selection_reason}')
+            if display_selection_reason and display_selection_reason != item.selection_reason:
+                lines.append(f'- display_selection_reason: {display_selection_reason}')
             channel = str(item.feedback_metadata.get('channel', '') or '')
             if channel:
                 lines.append(f'- channel: {channel}')
@@ -589,6 +604,15 @@ def parse_archive_slot_metadata(section_body: str) -> tuple[str | None, list[dic
         if match := ERROR_RE.match(line):
             current['error'] = match.group(1).strip()
             continue
+        if match := ORIGINAL_TITLE_RE.match(line):
+            current['original_title'] = match.group(1).strip()
+            continue
+        if match := DISPLAY_ACTION_RE.match(line):
+            current['display_action_or_observe'] = match.group(1).strip()
+            continue
+        if match := DISPLAY_SELECTION_REASON_RE.match(line):
+            current['display_selection_reason'] = match.group(1).strip()
+            continue
         if line.startswith(SUMMARY_PREFIX):
             current['summary'] = line.removeprefix(SUMMARY_PREFIX).strip()
     if current:
@@ -626,6 +650,10 @@ def build_item_catalog_rows(briefing_day: str, slot_rows: Iterable[dict[str, Any
             row['why_relevant'] = item.get('why_relevant', '')
         if 'action_or_observe' in item:
             row['action_or_observe'] = item.get('action_or_observe', '')
+        if 'display_action_or_observe' in item:
+            row['display_action_or_observe'] = item.get('display_action_or_observe', '')
+        if 'original_title' in item:
+            row['original_title'] = item.get('original_title', '')
         rows.append(row)
     return rows
 
@@ -683,11 +711,27 @@ def _display_line(raw_line: str) -> str | None:
         return f'为什么相关：{match.group(1).strip()}'
     if match := ACTION_OR_OBSERVE_RE.match(stripped):
         return f'行动建议：{match.group(1).strip()}'
+    if match := DISPLAY_ACTION_RE.match(stripped):
+        return f'行动建议：{match.group(1).strip()}'
     if match := SELECTION_REASON_RE.match(stripped):
+        return f'入选原因：{match.group(1).strip()}'
+    if match := DISPLAY_SELECTION_REASON_RE.match(stripped):
         return f'入选原因：{match.group(1).strip()}'
     if CHANNEL_RE.match(stripped):
         return None
+    if ORIGINAL_TITLE_RE.match(stripped):
+        return None
     return raw_line
+
+
+def _display_line_for_item(raw_line: str, item: dict[str, Any] | None) -> str | None:
+    stripped = raw_line.strip()
+    if item is not None:
+        if ACTION_OR_OBSERVE_RE.match(stripped) and item.get('display_action_or_observe'):
+            return None
+        if SELECTION_REASON_RE.match(stripped) and item.get('display_selection_reason'):
+            return None
+    return _display_line(raw_line)
 
 
 def render_hugo_content_with_inline_feedback(
@@ -732,7 +776,7 @@ def render_hugo_content_with_inline_feedback(
             if current_item is not None:
                 if raw_line.strip().startswith('{{< item-feedback'):
                     continue
-                rendered_line = _display_line(raw_line)
+                rendered_line = _display_line_for_item(raw_line, current_item)
                 if rendered_line is not None:
                     current_item_lines.append(rendered_line)
                 continue
@@ -755,25 +799,38 @@ def render_hugo_content_with_inline_feedback(
 def _curated_slot_rows(briefing: CuratedBriefing) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for item in briefing.items:
+        row_item = {
+            'heading': f'{item.rank}｜{item.title}',
+            'title': item.title,
+            'item_id': item.item_id,
+            'source': item.source,
+            'url': item.url,
+            'published': item.published,
+            'tags': list(item.tags),
+            'topic': item.topic,
+            'summary': item.rewritten_summary,
+            'why_relevant': item.why_relevant,
+            'action_or_observe': item.action_or_observe,
+            'selection_reason': item.selection_reason,
+            'channel': item.feedback_metadata.get('channel', ''),
+        }
+        display_action = str(item.feedback_metadata.get('display_action_or_observe') or '').strip()
+        if not display_action and item.original_title:
+            display_action = item.action_or_observe.replace(item.original_title, item.title).strip()
+        if display_action and display_action != item.action_or_observe:
+            row_item['display_action_or_observe'] = display_action
+        display_selection_reason = str(item.feedback_metadata.get('display_selection_reason') or '').strip()
+        if not display_selection_reason and item.original_title:
+            display_selection_reason = item.selection_reason.replace(item.original_title, item.title).strip()
+        if display_selection_reason and display_selection_reason != item.selection_reason:
+            row_item['display_selection_reason'] = display_selection_reason
+        if item.original_title:
+            row_item['original_title'] = item.original_title
         rows.append(
             {
                 'slot': briefing.slot,
                 'briefing_id': briefing.briefing_id,
-                'item': {
-                    'heading': f'{item.rank}｜{item.title}',
-                    'title': item.title,
-                    'item_id': item.item_id,
-                    'source': item.source,
-                    'url': item.url,
-                    'published': item.published,
-                    'tags': list(item.tags),
-                    'topic': item.topic,
-                    'summary': item.rewritten_summary,
-                    'why_relevant': item.why_relevant,
-                    'action_or_observe': item.action_or_observe,
-                    'selection_reason': item.selection_reason,
-                    'channel': item.feedback_metadata.get('channel', ''),
-                },
+                'item': row_item,
             }
         )
     return rows
