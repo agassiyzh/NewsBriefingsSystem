@@ -149,6 +149,8 @@ def test_run_briefing_non_dry_run_updates_slot_without_overwriting_other_section
     assert "保留的晚间内容" in archive_text
     assert "- 保留沉淀" in archive_text
     assert "新闻雷达｜2026-05-19 08:00 早间版" in preview_text
+    assert "1｜Agent copilots ship for developers" in preview_text
+    assert "链接：https://example.com/story" in preview_text
     assert hugo_text.startswith("---\n")
     assert "briefing_day: '2026-05-19'" in hugo_text
     assert "- item_id: 2026-05-19-08-001" in hugo_text
@@ -171,6 +173,57 @@ def test_run_briefing_non_dry_run_updates_slot_without_overwriting_other_section
             "action_or_observe": "行动：跟进Agent copilots ship for developers的产品页、源码或发布说明，判断是否值得纳入现有工具链。",
         }
     ]
+
+
+def test_run_briefing_exports_hugo_before_generating_compact_telegram_preview(tmp_path, monkeypatch):
+    archive_dir = tmp_path / "archive"
+    config_dir = _write_phase1_configs(tmp_path, archive_dir)
+
+    newsroom_path = str((config_dir / "newsroom.yaml").resolve())
+    config = yaml.safe_load(Path(newsroom_path).read_text(encoding="utf-8"))
+    config["publication"] = {
+        "public_site_base_url": "https://www.yuzhuohui.info/NewsBriefingsSystem/",
+        "hugo_export_enabled": True,
+    }
+    Path(newsroom_path).write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+
+    call_order: list[str] = []
+
+    from newsroom import runner as runner_module
+
+    original_hugo_publish = runner_module.HugoExportPublisher.publish
+    original_telegram_publish = runner_module.TelegramPublisher.publish
+
+    def tracking_hugo_publish(self, context):
+        call_order.append("hugo_export")
+        return original_hugo_publish(self, context)
+
+    def tracking_telegram_publish(self, context):
+        call_order.append("telegram")
+        return original_telegram_publish(self, context)
+
+    monkeypatch.setattr(runner_module.HugoExportPublisher, "publish", tracking_hugo_publish)
+    monkeypatch.setattr(runner_module.TelegramPublisher, "publish", tracking_telegram_publish)
+
+    result = run_briefing(
+        config_path=config_dir / "newsroom.yaml",
+        sources_path=config_dir / "sources.yaml",
+        interests_path=config_dir / "interests.yaml",
+        slot="morning",
+        dry_run=False,
+        fetcher=_fake_fetch,
+        now=datetime(2026, 5, 19, 0, 5, tzinfo=UTC),
+    )
+
+    manifest = json.loads(Path(result.manifest_path).read_text(encoding="utf-8"))
+    preview_text = Path(manifest["publication"]["telegram"]["output_path"]).read_text(encoding="utf-8")
+
+    assert call_order[-2:] == ["hugo_export", "telegram"]
+    assert "本版精选 1 条。" in preview_text
+    assert "今日信号：" in preview_text
+    assert "完整简报：https://www.yuzhuohui.info/NewsBriefingsSystem/briefings/2026/2026-05-19/" in preview_text
+    assert "GitHub Pages" not in preview_text
+    assert "1｜Agent copilots ship for developers" not in preview_text
 
 
 def test_run_briefing_uses_config_timezone_for_briefing_id(tmp_path):

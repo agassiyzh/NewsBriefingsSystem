@@ -431,15 +431,49 @@ def default_item_catalog_path(context: PublicationContext) -> Path:
     return resolve_path(context.system_dir, relative) / context.briefing_day[:4] / f'{context.briefing_day}.jsonl'
 
 
+def compact_public_briefing_url(context: PublicationContext) -> str | None:
+    if not context.publication_config.get('hugo_export_enabled', True):
+        return None
+    return public_briefing_url(context)
+
+
+def _render_compact_telegram_message(
+    context: PublicationContext,
+    *,
+    summary_line: str,
+    briefing_url: str,
+    today_signals: Iterable[str] | None = None,
+) -> str:
+    lines = [f'新闻雷达｜{context.briefing_day} {slot_label(context.slot)}', '']
+    lines.append(summary_line)
+
+    compact_signals = [str(signal).strip() for signal in (today_signals or []) if str(signal).strip()][:3]
+    if compact_signals:
+        lines.extend(['', '今日信号：'])
+        for signal in compact_signals:
+            lines.append(f'- {signal}')
+
+    lines.extend(['', f'完整简报：{briefing_url}'])
+    return '\n'.join(lines)
+
+
+
 def render_telegram_message(context: PublicationContext) -> str:
-    briefing_url = public_briefing_url(context)
+    briefing_url = compact_public_briefing_url(context)
     if context.curated_briefing is not None:
         briefing = context.curated_briefing
+        if briefing_url is not None:
+            summary_line = f'本版精选 {len(briefing.items)} 条。' if briefing.items else '本版次暂无精选新闻。'
+            return _render_compact_telegram_message(
+                context,
+                summary_line=summary_line,
+                briefing_url=briefing_url,
+                today_signals=briefing.today_signals,
+            )
+
         lines = [f'新闻雷达｜{context.briefing_day} {slot_label(context.slot)}', '']
         if not briefing.items:
             lines.append('本版次暂无精选新闻。')
-            if briefing_url is not None:
-                lines.extend(['', f'完整简报：{briefing_url}'])
             return '\n'.join(lines)
 
         if briefing.today_signals:
@@ -458,18 +492,22 @@ def render_telegram_message(context: PublicationContext) -> str:
                 lines.append(f'动作建议：{item.action_or_observe}')
             if item.tags:
                 lines.append(f"标签：{', '.join(item.tags)}")
-            if briefing_url is None:
-                lines.append(f'链接：{item.url}')
+            lines.append(f'链接：{item.url}')
             lines.append('')
-        if briefing_url is not None:
-            lines.append(f'完整简报：{briefing_url}')
         return '\n'.join(lines).strip()
+
+    if briefing_url is not None:
+        candidate_count = len(context.collect_result.candidates)
+        summary_line = f'本版收录 {candidate_count} 条候选。' if candidate_count > 0 else '本版次暂无候选新闻。'
+        return _render_compact_telegram_message(
+            context,
+            summary_line=summary_line,
+            briefing_url=briefing_url,
+        )
 
     lines = [f'新闻雷达｜{context.briefing_day} {slot_label(context.slot)}', '']
     if not context.collect_result.candidates:
         lines.append('本版次暂无候选新闻。')
-        if briefing_url is not None:
-            lines.extend(['', f'完整简报：{briefing_url}'])
         return '\n'.join(lines)
 
     for index, candidate in enumerate(context.collect_result.candidates, start=1):
@@ -478,11 +516,7 @@ def render_telegram_message(context: PublicationContext) -> str:
             lines.append(f"极简摘要：{candidate['snippet']}")
         if candidate.get('tags'):
             lines.append(f"标签：{', '.join(candidate['tags'])}")
-        if briefing_url is None:
-            lines.append(f"链接：{candidate['url']}")
-        lines.append('')
-    if briefing_url is not None:
-        lines.append(f'完整简报：{briefing_url}')
+        lines.append(f"链接：{candidate['url']}")
         lines.append('')
     lines.append('今日信号：详见 Markdown/Hugo 归档，当前仅生成 Telegram dry-run 预览。')
     return '\n'.join(lines).strip()

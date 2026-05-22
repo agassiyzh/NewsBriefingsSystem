@@ -8,10 +8,12 @@ from pathlib import Path
 import yaml
 
 from newsroom.collector import CollectResult
+from newsroom.editor import CuratedBriefing, CuratedItem
 from newsroom.publisher import (
     PublicationContext,
     TelegramPublisher,
     export_archive_to_hugo,
+    render_telegram_message,
 )
 
 
@@ -75,6 +77,59 @@ def _sample_collect_result() -> CollectResult:
         markdown="# 新闻候选上下文\n",
         error_count=0,
         errors=[],
+    )
+
+
+
+def _sample_curated_briefing() -> CuratedBriefing:
+    return CuratedBriefing(
+        briefing_id="2026-05-19-08",
+        slot="morning",
+        slot_label="08:00 早间版",
+        generated_at="2026-05-19T00:10:00+00:00",
+        editor_version="curated-v1",
+        candidate_count=3,
+        curated_item_count=2,
+        today_signals=[
+            "AI Agent 相关信号在本版中最集中，适合优先跟踪后续产品化与工作流变化。",
+            "本版覆盖 2 个主题，可同时观察代理工具与机器人落地方向。",
+        ],
+        items=[
+            CuratedItem(
+                briefing_id="2026-05-19-08",
+                item_id="2026-05-19-08-001",
+                rank=1,
+                title="Agent copilots ship for developers",
+                source="Working Feed",
+                url="https://example.com/story",
+                published="2026-05-19T00:30:00+00:00",
+                tags=["AI Agent"],
+                topic="AI Agent",
+                rewritten_summary="A new agent workflow shipped.",
+                why_relevant="Useful for project inspiration and workflow evaluation.",
+                action_or_observe="行动：跟进 Agent copilots ship for developers 的产品页、源码或发布说明，判断是否值得纳入现有工具链。",
+                selection_reason="Strong fit for AI agent tracking.",
+                feedback_metadata={"channel": "site"},
+            ),
+            CuratedItem(
+                briefing_id="2026-05-19-08",
+                item_id="2026-05-19-08-002",
+                rank=2,
+                title="Robotics retail pilots expand",
+                source="Noon Feed",
+                url="https://example.com/noon",
+                published="2026-05-19T01:30:00+00:00",
+                tags=["Robotics"],
+                topic="Robotics",
+                rewritten_summary="Pilots expanded.",
+                why_relevant="Tracks commercialization signals.",
+                action_or_observe="观察：继续跟踪 Robotics retail pilots expand 的部署规模、付费客户与复购节奏，判断是否进入规模化。",
+                selection_reason="Broadens topic diversity.",
+                feedback_metadata={"channel": "site"},
+            ),
+        ],
+        feedback_items=[],
+        warnings=[],
     )
 
 
@@ -344,9 +399,99 @@ def test_telegram_publisher_prefers_public_briefing_page_link_when_configured(tm
     assert result.status == "dry_run"
     assert result.dry_run is True
     assert result.output_path == str(preview_path)
+    assert "本版收录 1 条候选。" in preview_text
     assert "完整简报：https://www.yuzhuohui.info/NewsBriefingsSystem/briefings/2026/2026-05-19/" in preview_text
+    assert "GitHub Pages" not in preview_text
+    assert "Agent copilots ship for developers" not in preview_text
+    assert "极简摘要：" not in preview_text
     assert "链接：https://example.com/story" not in preview_text
     assert sent_messages == []
+
+
+def test_render_telegram_message_with_public_site_base_url_uses_compact_preview(tmp_path):
+    context = _base_publication_context(
+        tmp_path,
+        collect_result=_sample_collect_result(),
+        dry_run=False,
+        publication_overrides={"public_site_base_url": "https://www.yuzhuohui.info/NewsBriefingsSystem/"},
+    )
+
+    message = render_telegram_message(context)
+
+    assert "新闻雷达｜2026-05-19 08:00 早间版" in message
+    assert "本版收录 1 条候选。" in message
+    assert "完整简报：https://www.yuzhuohui.info/NewsBriefingsSystem/briefings/2026/2026-05-19/" in message
+    assert "GitHub Pages" not in message
+    assert "Agent copilots ship for developers" not in message
+    assert "极简摘要：" not in message
+    assert "链接：https://example.com/story" not in message
+
+
+
+def test_render_telegram_message_with_curated_briefing_and_public_site_base_url_uses_compact_preview(tmp_path):
+    context = _base_publication_context(
+        tmp_path,
+        collect_result=_sample_collect_result(),
+        dry_run=False,
+        publication_overrides={"public_site_base_url": "https://www.yuzhuohui.info/NewsBriefingsSystem/"},
+    )
+    context.curated_briefing = _sample_curated_briefing()
+
+    message = render_telegram_message(context)
+
+    assert "新闻雷达｜2026-05-19 08:00 早间版" in message
+    assert "本版精选 2 条。" in message
+    assert "今日信号：" in message
+    assert "AI Agent 相关信号在本版中最集中" in message
+    assert "本版覆盖 2 个主题" in message
+    assert "完整简报：https://www.yuzhuohui.info/NewsBriefingsSystem/briefings/2026/2026-05-19/" in message
+    assert "GitHub Pages" not in message
+    assert "Agent copilots ship for developers" not in message
+    assert "极简摘要：" not in message
+    assert "为什么值得看：" not in message
+    assert "动作建议：" not in message
+    assert "链接：https://example.com/story" not in message
+
+
+
+def test_render_telegram_message_with_curated_briefing_without_public_site_base_url_keeps_fallback_details(tmp_path):
+    context = _base_publication_context(
+        tmp_path,
+        collect_result=_sample_collect_result(),
+        dry_run=False,
+    )
+    context.curated_briefing = _sample_curated_briefing()
+
+    message = render_telegram_message(context)
+
+    assert "今日信号：" in message
+    assert "1｜Agent copilots ship for developers" in message
+    assert "极简摘要：A new agent workflow shipped." in message
+    assert "为什么值得看：Useful for project inspiration and workflow evaluation." in message
+    assert "动作建议：行动：跟进 Agent copilots ship for developers 的产品页、源码或发布说明，判断是否值得纳入现有工具链。" in message
+    assert "链接：https://example.com/story" in message
+    assert "完整简报：" not in message
+
+
+
+def test_render_telegram_message_with_public_site_base_url_and_hugo_export_disabled_keeps_fallback_details(tmp_path):
+    context = _base_publication_context(
+        tmp_path,
+        collect_result=_sample_collect_result(),
+        dry_run=False,
+        publication_overrides={
+            "public_site_base_url": "https://www.yuzhuohui.info/NewsBriefingsSystem/",
+            "hugo_export_enabled": False,
+        },
+    )
+
+    message = render_telegram_message(context)
+
+    assert "本版收录" not in message
+    assert "完整简报：https://www.yuzhuohui.info/NewsBriefingsSystem/briefings/2026/2026-05-19/" not in message
+    assert "1｜Agent copilots ship for developers" in message
+    assert "链接：https://example.com/story" in message
+
 
 
 def test_publish_telegram_cli_dry_run_manifest_keeps_status_without_writing_preview(tmp_path):

@@ -22,6 +22,9 @@ def _write_configs(base_dir: Path, archive_dir: Path) -> Path:
         "collection": {
             "max_total": 20,
         },
+        "publication": {
+            "public_site_base_url": "https://www.yuzhuohui.info/NewsBriefingsSystem/",
+        },
         "feedback": {
             "default_channel": "site",
         },
@@ -119,9 +122,14 @@ def test_run_briefing_publishes_curated_items_not_all_candidates(tmp_path):
     assert "- why_relevant:" in archive_text
     assert "- action_or_observe:" in archive_text
     assert "13｜Agent workflow update 13" not in archive_text
+    assert "新闻雷达｜2099-01-03 08:00 早间版" in preview_text
+    assert "本版精选 12 条。" in preview_text
     assert "今日信号：" in preview_text
-    assert "12｜Agent workflow update 12" in preview_text
+    assert "GitHub Pages" not in preview_text
+    assert "https://example.com/story-12" not in preview_text
+    assert "12｜Agent workflow update 12" not in preview_text
     assert "13｜Agent workflow update 13" not in preview_text
+    assert "完整简报：https://www.yuzhuohui.info/NewsBriefingsSystem/briefings/2099/2099-01-03/" in preview_text
     assert len(item_catalog_rows) == 12
     assert item_catalog_rows[0]["item_id"] == "2099-01-03-08-001"
     assert item_catalog_rows[0]["why_relevant"]

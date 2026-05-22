@@ -150,8 +150,8 @@ def run_briefing(
             },
         )
     else:
-        telegram_result = TelegramPublisher().publish(publication_context)
         hugo_result = HugoExportPublisher().publish(publication_context)
+        telegram_result = TelegramPublisher().publish(publication_context)
     publish_results = [markdown_result, telegram_result, hugo_result]
     publication_status = {publish_result.target: publish_result.to_manifest() for publish_result in publish_results}
     item_catalog_status = dict(hugo_result.details.get('item_catalog', {}))
