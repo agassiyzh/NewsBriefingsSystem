@@ -1,5 +1,6 @@
 {{- $items := .Params.feedback_items | default (slice) -}}
-{{- if $items -}}
+{{- $pageFeedbackEnabled := .Params.feedback_ui_enabled | default false -}}
+{{- if and $pageFeedbackEnabled $items -}}
   <section class="item-feedback-list" aria-labelledby="item-feedback-list-title"{{ if not .Site.Params.feedback.widgetEnabled }} hidden{{ end }}>
     <div class="feedback-copy">
       <h2 id="item-feedback-list-title">逐条新闻反馈</h2>

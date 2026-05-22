@@ -18,6 +18,8 @@ publication:
   telegram_enabled: true
   markdown_enabled: true
   hugo_export_enabled: true
+  feedback_ui_enabled: false
+  public_site_base_url: "https://www.yuzhuohui.info/NewsBriefingsSystem/"
   phase1_runner_publish: false
 
 feedback:

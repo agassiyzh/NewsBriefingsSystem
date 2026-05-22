@@ -3,7 +3,8 @@
 {{- $source := .Get "source" -}}
 {{- $tags := .Get "tags" -}}
 {{- $feedback := .Site.Params.feedback | default (dict) -}}
-{{- if and $feedback.enabled $feedback.workerBaseUrl $feedback.widgetEnabled $briefingID $itemID -}}
+{{- $pageFeedbackEnabled := .Page.Params.feedback_ui_enabled | default false -}}
+{{- if and $pageFeedbackEnabled $feedback.enabled $feedback.workerBaseUrl $feedback.widgetEnabled $briefingID $itemID -}}
   <section
     class="item-feedback-widget"
     aria-label="新闻条目反馈 {{ $itemID }}"

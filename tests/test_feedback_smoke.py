@@ -50,6 +50,7 @@ def _write_enabled_site(tmp_path: Path, *, worker_base_url: str) -> tuple[Path, 
         output_path=content_path,
         briefing_day="2026-05-19",
         timezone_name="Asia/Shanghai",
+        include_feedback_ui=True,
     )
 
     hugo_text = (ROOT / "site" / "hugo.toml").read_text(encoding="utf-8")

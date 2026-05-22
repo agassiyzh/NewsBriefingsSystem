@@ -36,7 +36,7 @@ SAMPLE_ARCHIVE = (
 )
 
 
-def _write_site(tmp_path: Path) -> tuple[Path, Path]:
+def _write_site(tmp_path: Path, *, include_feedback_ui: bool = False) -> tuple[Path, Path]:
     site_dir = tmp_path / "site"
     content_path = site_dir / "content" / "briefings" / "2026" / "2026-05-19.md"
     archive_path = tmp_path / "archive" / "2026-05-19.md"
@@ -47,6 +47,7 @@ def _write_site(tmp_path: Path) -> tuple[Path, Path]:
         output_path=content_path,
         briefing_day="2026-05-19",
         timezone_name="Asia/Shanghai",
+        include_feedback_ui=include_feedback_ui,
     )
 
     (site_dir / "hugo.toml").write_text((ROOT / "site" / "hugo.toml").read_text(encoding="utf-8"), encoding="utf-8")
@@ -85,6 +86,7 @@ def test_feedback_export_front_matter_contains_item_mapping(tmp_path):
     _, front_matter_text, _ = text.split("---\n", 2)
     front_matter = yaml.safe_load(front_matter_text)
 
+    assert front_matter["feedback_ui_enabled"] is False
     assert front_matter["feedback_primary_briefing_id"] == "2026-05-19-08"
     assert front_matter["feedback_items"][0] == {
         "slot": "morning",
@@ -131,8 +133,33 @@ def test_hugo_build_with_feedback_disabled_keeps_content_readable(tmp_path):
     assert 'href="https://example.com/story"' in html
 
 
+def test_hugo_build_with_site_feedback_enabled_but_page_flag_disabled_hides_feedback_ui(tmp_path):
+    site_dir, content_path = _write_site(tmp_path)
+    (site_dir / "hugo.toml").write_text(
+        (site_dir / "hugo.toml")
+        .read_text(encoding="utf-8")
+        .replace("enabled = false", "enabled = true")
+        .replace('workerBaseUrl = ""', 'workerBaseUrl = "http://127.0.0.1:8787"')
+        .replace("widgetEnabled = false", "widgetEnabled = true")
+        .replace("trackLinks = false", "trackLinks = true")
+        .replace("dwellEnabled = false", "dwellEnabled = true"),
+        encoding="utf-8",
+    )
+
+    _, front_matter_text, _ = content_path.read_text(encoding="utf-8").split("---\n", 2)
+    front_matter = yaml.safe_load(front_matter_text)
+    html_path = _build_hugo(site_dir, tmp_path / "public-site-enabled-page-disabled")
+    html = html_path.read_text(encoding="utf-8")
+
+    assert front_matter["feedback_ui_enabled"] is False
+    assert 'class="item-feedback-widget"' not in html
+    assert 'newsroom-feedback-config' not in html
+    assert 'newsroom-feedback-items' not in html
+    assert "feedback.js" not in html
+
+
 def test_hugo_build_with_feedback_enabled_renders_widget_and_tracking_config(tmp_path):
-    site_dir, _ = _write_site(tmp_path)
+    site_dir, _ = _write_site(tmp_path, include_feedback_ui=True)
     (site_dir / "hugo.toml").write_text(
         (site_dir / "hugo.toml")
         .read_text(encoding="utf-8")

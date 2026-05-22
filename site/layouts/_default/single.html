@@ -1,5 +1,6 @@
 {{ define "main" }}
   {{ $feedback := .Site.Params.feedback | default (dict) }}
+  {{ $pageFeedbackEnabled := .Params.feedback_ui_enabled | default false }}
   <article
     data-feedback-page="briefing"
     data-briefing-day="{{ .Params.briefing_day }}"
@@ -25,7 +26,7 @@
       {{ .Content }}
     </section>
 
-    {{ if and $feedback.enabled $feedback.workerBaseUrl }}
+    {{ if and $pageFeedbackEnabled $feedback.enabled $feedback.workerBaseUrl }}
       <script id="newsroom-feedback-config" type="application/json">
         {
           "enabled": true,

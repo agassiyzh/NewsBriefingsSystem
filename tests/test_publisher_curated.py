@@ -123,12 +123,14 @@ def test_export_curated_briefing_to_hugo_preserves_item_level_metadata(tmp_path)
     assert "今日信号：" in archive_text
     assert "- why_relevant: Useful for project inspiration and workflow evaluation." in archive_text
     assert "- action_or_observe: 行动：跟进 Agent copilots ship for developers 的产品页、源码或发布说明，判断是否值得纳入现有工具链。" in archive_text
+    assert front_matter["feedback_ui_enabled"] is False
     assert front_matter["feedback_items"][0]["why_relevant"] == "Useful for project inspiration and workflow evaluation."
     assert front_matter["feedback_items"][0]["action_or_observe"] == "行动：跟进 Agent copilots ship for developers 的产品页、源码或发布说明，判断是否值得纳入现有工具链。"
     assert front_matter["feedback_items"][0]["channel"] == "site"
     assert "今日信号：" in body
     assert "为什么相关：Useful for project inspiration and workflow evaluation." in body
     assert "行动建议：行动：跟进 Agent copilots ship for developers 的产品页、源码或发布说明，判断是否值得纳入现有工具链。" in body
+    assert "{{< item-feedback" not in body
     assert item_catalog_rows == [
         {
             "briefing_day": "2026-05-19",
@@ -212,6 +214,7 @@ def test_export_curated_briefing_to_hugo_ignores_existing_archive_text(tmp_path)
     front_matter = yaml.safe_load(front_matter_text)
 
     assert metadata["item_count"] == 2
+    assert front_matter["feedback_ui_enabled"] is False
     assert front_matter["item_count"] == 2
     assert front_matter["item_ids"] == ["2026-05-19-13-001", "2026-05-19-13-002"]
     assert body.count('<section class="news-item-card"') == 2
@@ -221,3 +224,26 @@ def test_export_curated_briefing_to_hugo_ignores_existing_archive_text(tmp_path)
     assert "Legacy noon item" not in body
     assert "Legacy noon item 70" not in body
     assert "Should not appear in curated Hugo export." not in body
+    assert "{{< item-feedback" not in body
+
+
+def test_export_curated_briefing_to_hugo_can_reenable_feedback_ui(tmp_path):
+    archive_path = tmp_path / "archive" / "2026-05-19.md"
+    output_path = tmp_path / "site" / "content" / "briefings" / "2026" / "2026-05-19.md"
+
+    metadata = export_curated_briefing_to_hugo(
+        briefing=_sample_curated_briefing(),
+        output_path=output_path,
+        archive_path=archive_path,
+        briefing_day="2026-05-19",
+        timezone_name="Asia/Shanghai",
+        include_feedback_ui=True,
+    )
+
+    text = output_path.read_text(encoding="utf-8")
+    _, front_matter_text, body = text.split("---\n", 2)
+    front_matter = yaml.safe_load(front_matter_text)
+
+    assert metadata["item_count"] == 2
+    assert front_matter["feedback_ui_enabled"] is True
+    assert '{{< item-feedback briefing_id="2026-05-19-13" item_id="2026-05-19-13-001" source="Working Feed" tags="AI Agent,Tooling" >}}' in body

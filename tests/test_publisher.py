@@ -20,8 +20,21 @@ PUBLISH_TELEGRAM_SCRIPT = ROOT / "scripts" / "publish_telegram.py"
 EXPORT_HUGO_SCRIPT = ROOT / "scripts" / "export_hugo.py"
 
 
-def _base_publication_context(tmp_path: Path, *, collect_result: CollectResult, dry_run: bool) -> PublicationContext:
+def _base_publication_context(
+    tmp_path: Path,
+    *,
+    collect_result: CollectResult,
+    dry_run: bool,
+    publication_overrides: dict[str, object] | None = None,
+) -> PublicationContext:
     archive_path = tmp_path / "archive" / "2026-05-19.md"
+    publication_config = {
+        "telegram_enabled": True,
+        "markdown_enabled": True,
+        "hugo_export_enabled": True,
+    }
+    if publication_overrides:
+        publication_config.update(publication_overrides)
     return PublicationContext(
         briefing_id="2026-05-19-08",
         slot="morning",
@@ -34,11 +47,7 @@ def _base_publication_context(tmp_path: Path, *, collect_result: CollectResult, 
             "telegram_previews_dir": "data/telegram",
             "hugo_content_dir": "site/content/briefings",
         },
-        publication_config={
-            "telegram_enabled": True,
-            "markdown_enabled": True,
-            "hugo_export_enabled": True,
-        },
+        publication_config=publication_config,
         dry_run=dry_run,
     )
 
@@ -202,6 +211,7 @@ def test_export_archive_to_hugo_writes_front_matter_and_slot_metadata(tmp_path):
     assert front_matter["item_ids"] == ["2026-05-19-08-001", "2026-05-19-13-001"]
     assert front_matter["sources"] == ["Noon Feed", "Working Feed"]
     assert front_matter["tags"] == ["AI Agent", "Robotics", "Tooling"]
+    assert front_matter["feedback_ui_enabled"] is False
     assert front_matter["feedback_primary_briefing_id"] == "2026-05-19-08"
     assert front_matter["feedback_items"] == [
         {
@@ -225,7 +235,7 @@ def test_export_archive_to_hugo_writes_front_matter_and_slot_metadata(tmp_path):
     assert "## 08:00 早间版" in body
     assert "- item_id: 2026-05-19-08-001" in body
     assert '<section class="news-item-card" data-news-item-id="2026-05-19-08-001">' in body
-    assert '{{< item-feedback briefing_id="2026-05-19-08" item_id="2026-05-19-08-001" source="Working Feed" tags="AI Agent,Tooling" >}}' in body
+    assert "{{< item-feedback" not in body
     assert "## 今日沉淀" in body
     assert item_catalog_rows == [
         {
@@ -259,6 +269,45 @@ def test_export_archive_to_hugo_writes_front_matter_and_slot_metadata(tmp_path):
     ]
 
 
+
+def test_export_archive_to_hugo_can_reenable_feedback_ui(tmp_path):
+    archive_path = tmp_path / "archive" / "2026-05-19.md"
+    output_path = tmp_path / "site" / "content" / "briefings" / "2026" / "2026-05-19.md"
+    archive_path.parent.mkdir(parents=True)
+    archive_path.write_text(
+        "# 新闻雷达｜2026-05-19\n\n"
+        "## 08:00 早间版\n\n"
+        "<!-- briefing_id: 2026-05-19-08 -->\n\n"
+        "### 1｜Agent copilots ship for developers\n\n"
+        "- item_id: 2026-05-19-08-001\n"
+        "- source: Working Feed\n"
+        "- url: https://example.com/story\n"
+        "- tags: [AI Agent, Tooling]\n\n"
+        "摘要：A new agent workflow shipped.\n\n"
+        "## 13:00 午间版\n\n"
+        "_本版次暂无候选新闻。_\n\n"
+        "## 20:00 晚间版\n\n"
+        "_本版次暂无候选新闻。_\n\n"
+        "## 今日沉淀\n\n"
+        "- 趋势：Agent workflow 更成熟\n",
+        encoding="utf-8",
+    )
+
+    export_archive_to_hugo(
+        archive_path=archive_path,
+        output_path=output_path,
+        briefing_day="2026-05-19",
+        timezone_name="Asia/Shanghai",
+        include_feedback_ui=True,
+    )
+
+    _, front_matter_text, body = output_path.read_text(encoding="utf-8").split("---\n", 2)
+    front_matter = yaml.safe_load(front_matter_text)
+
+    assert front_matter["feedback_ui_enabled"] is True
+    assert '{{< item-feedback briefing_id="2026-05-19-08" item_id="2026-05-19-08-001" source="Working Feed" tags="AI Agent,Tooling" >}}' in body
+
+
 def test_telegram_publisher_safe_local_writes_preview_without_sending(tmp_path):
     sent_messages = []
     preview_path = tmp_path / "preview.txt"
@@ -274,6 +323,29 @@ def test_telegram_publisher_safe_local_writes_preview_without_sending(tmp_path):
     assert "新闻雷达｜2026-05-19 08:00 早间版" in preview_text
     assert "1｜Agent copilots ship for developers" in preview_text
     assert "链接：https://example.com/story" in preview_text
+    assert sent_messages == []
+
+
+
+def test_telegram_publisher_prefers_public_briefing_page_link_when_configured(tmp_path):
+    sent_messages = []
+    preview_path = tmp_path / "preview.txt"
+    publisher = TelegramPublisher(preview_path=preview_path, sender=sent_messages.append)
+    context = _base_publication_context(
+        tmp_path,
+        collect_result=_sample_collect_result(),
+        dry_run=False,
+        publication_overrides={"public_site_base_url": "https://www.yuzhuohui.info/NewsBriefingsSystem/"},
+    )
+
+    result = publisher.publish(context)
+
+    preview_text = preview_path.read_text(encoding="utf-8")
+    assert result.status == "dry_run"
+    assert result.dry_run is True
+    assert result.output_path == str(preview_path)
+    assert "完整简报：https://www.yuzhuohui.info/NewsBriefingsSystem/briefings/2026/2026-05-19/" in preview_text
+    assert "链接：https://example.com/story" not in preview_text
     assert sent_messages == []
 
 

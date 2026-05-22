@@ -110,6 +110,9 @@
       .news-item-card h3 {
         margin-top: 0;
       }
+      {{ $feedback := .Site.Params.feedback | default (dict) }}
+      {{ $pageFeedbackEnabled := .Params.feedback_ui_enabled | default false }}
+      {{ if and $pageFeedbackEnabled $feedback.enabled $feedback.workerBaseUrl }}
       .item-feedback-widget {
         margin-top: 1rem;
         padding-top: 0.85rem;
@@ -154,6 +157,7 @@
       .feedback-status[data-state="error"] {
         color: #fca5a5;
       }
+      {{ end }}
     </style>
   </head>
   <body>
@@ -161,7 +165,8 @@
       {{ block "main" . }}{{ end }}
     </div>
     {{ $feedback := .Site.Params.feedback | default (dict) }}
-    {{ if and $feedback.enabled $feedback.workerBaseUrl (or $feedback.widgetEnabled $feedback.trackLinks $feedback.dwellEnabled) }}
+    {{ $pageFeedbackEnabled := .Params.feedback_ui_enabled | default false }}
+    {{ if and $pageFeedbackEnabled $feedback.enabled $feedback.workerBaseUrl (or $feedback.widgetEnabled $feedback.trackLinks $feedback.dwellEnabled) }}
       <script defer src="{{ "feedback.js" | relURL }}"></script>
     {{ end }}
   </body>
