@@ -1,10 +1,19 @@
 import json
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
 
 from newsroom.runner import run_briefing
+from newsroom.auto_publish import (
+    PublishError,
+    changed_briefing_files,
+    default_commit_message,
+    ensure_feedback_ui_absent,
+    git_push_preflight,
+    parse_git_status_porcelain,
+)
 
 
 def _write_phase1_configs(base_dir: Path, archive_dir: Path) -> Path:
@@ -241,3 +250,84 @@ def test_run_briefing_uses_config_timezone_for_briefing_id(tmp_path):
     )
 
     assert result.briefing_id == "2026-05-19-08"
+
+
+def test_parse_git_status_porcelain_filters_to_briefing_markdown_and_rejects_deletions():
+    changed = parse_git_status_porcelain(
+        " M site/content/briefings/2026/2026-05-21.md\n"
+        "?? site/content/briefings/2026/2026-05-22.md\n"
+        " M docs/final-architecture-and-ops.md\n"
+    )
+
+    assert changed == [
+        "site/content/briefings/2026/2026-05-21.md",
+        "site/content/briefings/2026/2026-05-22.md",
+    ]
+
+    try:
+        parse_git_status_porcelain(" D site/content/briefings/2026/2026-05-20.md\n")
+    except PublishError as exc:
+        assert "deleted briefing content" in str(exc)
+    else:
+        raise AssertionError("expected deleted briefing content to raise PublishError")
+
+
+def test_changed_briefing_files_reads_repo_status(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "config", "user.name", "Tester"], cwd=repo, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "config", "user.email", "tester@example.com"], cwd=repo, check=True, capture_output=True, text=True)
+
+    target = repo / "site" / "content" / "briefings" / "2026"
+    target.mkdir(parents=True)
+    tracked = target / "2026-05-21.md"
+    tracked.write_text("hello\n", encoding="utf-8")
+    subprocess.run(["git", "add", tracked.as_posix()], cwd=repo, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "commit", "-m", "seed"], cwd=repo, check=True, capture_output=True, text=True)
+
+    tracked.write_text("updated\n", encoding="utf-8")
+    (target / "2026-05-22.md").write_text("new\n", encoding="utf-8")
+    (repo / "docs").mkdir()
+    (repo / "docs" / "note.md").write_text("ignore\n", encoding="utf-8")
+
+    assert changed_briefing_files(repo) == [
+        "site/content/briefings/2026/2026-05-21.md",
+        "site/content/briefings/2026/2026-05-22.md",
+    ]
+
+
+def test_default_commit_message_lists_sorted_briefing_days():
+    assert default_commit_message(["2026-05-22", "2026-05-21", "2026-05-22"]) == (
+        "publish: update briefings 2026-05-21, 2026-05-22"
+    )
+
+
+def test_ensure_feedback_ui_absent_allows_page_metadata_but_rejects_feedback_controls(tmp_path):
+    html_path = tmp_path / "briefing.html"
+    html_path.write_text('<article data-feedback-page="briefing" data-briefing-day="2026-05-22"></article>', encoding="utf-8")
+    ensure_feedback_ui_absent(html_path.read_text(encoding="utf-8"), html_path)
+
+    html_path.write_text('<section class="item-feedback-widget"></section>', encoding="utf-8")
+    try:
+        ensure_feedback_ui_absent(html_path.read_text(encoding="utf-8"), html_path)
+    except PublishError as exc:
+        assert "feedback marker" in str(exc)
+    else:
+        raise AssertionError("expected feedback controls to raise PublishError")
+
+
+def test_git_push_preflight_fails_before_commit_when_origin_is_unreachable(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "config", "user.name", "Tester"], cwd=repo, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "config", "user.email", "tester@example.com"], cwd=repo, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "remote", "add", "origin", "https://github.com/example/does-not-exist.git"], cwd=repo, check=True, capture_output=True, text=True)
+
+    try:
+        git_push_preflight(repo)
+    except PublishError as exc:
+        assert "git push preflight failed before creating commit" in str(exc)
+    else:
+        raise AssertionError("expected git push preflight to raise PublishError")
